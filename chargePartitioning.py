@@ -3,6 +3,11 @@ import numpy as np
 import periodictable
 import scipy
 
+covalentRadiusFactor = .5
+
+def getCovalentRadius(atomSymbol):
+    return periodictable.getCovalentRadiosFromString(atomSymbol) * covalentRadiusFactor
+
 def splitMoleculeToAtoms(molecule: pyscf.gto.Mole):
     atomList = []
     basis = molecule.basis
@@ -21,7 +26,7 @@ def getLogNormalizer(x, molecule: pyscf.gto.Mole):
     for i, atom in enumerate(molecule._atom):
         atomSymbol = atom[0]
         pos = atom[1]
-        covalentRadius = periodictable.getCovalentRadiosFromString(atomSymbol)
+        covalentRadius = getCovalentRadius(atomSymbol)
         distances[:,i] = -(np.linalg.norm(x - pos, axis=1)**2) / (2 * covalentRadius**2)
     return scipy.special.logsumexp(distances, axis=1)
 
@@ -29,6 +34,7 @@ def getLogNormalizer(x, molecule: pyscf.gto.Mole):
 def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex):
     nAtoms = len(molecule._atom)
     normalizer = getLogNormalizer(x, molecule)
-    covalentRadius = periodictable.getCovalentRadiosFromString(molecule._atom[atomIndex][0])
+    covalentRadius = getCovalentRadius(molecule._atom[atomIndex][0])
     pos = molecule._atom[atomIndex][1]
     return np.exp( -np.linalg.norm(pos - x, axis=1)**2 /(2 * covalentRadius**2) - normalizer )
+

@@ -12,14 +12,16 @@ mol.symmetry = False
 mol.build()
 
 chargePartitioning.splitMoleculeToAtoms(mol)
-nx = 100
+nx = 1000
 ny = 1
 nz = 1
 x = np.zeros((nx,3))
 x[:,2] = np.linspace(-2,5,nx)
-cp = chargePartitioning.partitioningWeights(x, mol, 1)
+cp1 = chargePartitioning.partitioningWeights(x, mol, 0)
+cp2 = chargePartitioning.partitioningWeights(x, mol, 1)
+cp3 = chargePartitioning.partitioningWeights(x, mol, 2)
 
-plt.plot(x[:, 2], cp)
+plt.plot(x[:, 2], cp1, x[:, 2], cp2, x[:, 2], cp3)
 plt.show()
 
 quit()
