@@ -11,18 +11,32 @@ mol.basis = 'ccpvtz'
 mol.symmetry = False
 mol.build()
 
-chargePartitioning.splitMoleculeToAtoms(mol)
+mf = mol.UHF(max_cycle=1000).run()
+dft = mol.UKS(max_cycle=1000)
+dft.xc = 'pbe'
+dft = dft.run()
+mycc = mf.CCSD().run()
+
+dm = mycc.make_rdm1(ao_repr=True)
+
+# chargePartitioning.splitMoleculeToAtoms(mol)
 nx = 1000
 ny = 1
 nz = 1
 x = np.zeros((nx,3))
 x[:,2] = np.linspace(-2,5,nx)
 cp1 = chargePartitioning.partitioningWeights(x, mol, 0)
-cp2 = chargePartitioning.partitioningWeights(x, mol, 1)
-cp3 = chargePartitioning.partitioningWeights(x, mol, 2)
+# cp2 = chargePartitioning.partitioningWeights(x, mol, 1)
+# cp3 = chargePartitioning.partitioningWeights(x, mol, 2)
 
-plt.plot(x[:, 2], cp1, x[:, 2], cp2, x[:, 2], cp3)
-plt.show()
+c = []
+for i in range(len(mol._atom)):
+    c.append(chargePartitioning.integrateDensityOfAtom(mol, dm, i))
+print('charges', c)
+print('total charge,', sum(c))
+
+# plt.plot(x[:, 2], cp1)
+# plt.show()
 
 quit()
 

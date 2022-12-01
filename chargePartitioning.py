@@ -3,16 +3,16 @@ import numpy as np
 import periodictable
 import scipy
 
-covalentRadiusFactor = .5
+covalentRadiusFactor = .6
 
 def getCovalentRadius(atomSymbol):
     return periodictable.getCovalentRadiosFromString(atomSymbol) * covalentRadiusFactor
 
-def splitMoleculeToAtoms(molecule: pyscf.gto.Mole):
-    atomList = []
-    basis = molecule.basis
-    for atom in molecule._atom:
-        atomList.append(pyscf.gto.Mole(atom=atom, basis=basis))
+# def splitMoleculeToAtoms(molecule: pyscf.gto.Mole):
+#     atomList = []
+#     basis = molecule.basis
+#     for atom in molecule._atom:
+#         atomList.append(pyscf.gto.Mole(atom=atom, basis=basis))
 
 def createGrid(molecule: pyscf.gto.Mole, gridLevel=4):
     grid = pyscf.dft.gen_grid.Grids(molecule)
@@ -37,4 +37,24 @@ def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex):
     covalentRadius = getCovalentRadius(molecule._atom[atomIndex][0])
     pos = molecule._atom[atomIndex][1]
     return np.exp( -np.linalg.norm(pos - x, axis=1)**2 /(2 * covalentRadius**2) - normalizer )
+
+
+def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
+
+    # basis = molecule.basis
+    # temp_atom = pyscf.gto.Mole()
+    # temp_atom.atom = [molecule._atom[atomIndex]]
+    # temp_atom.basis = basis
+    # temp_atom.spin = 1
+    # temp_atom.build()
+    
+
+    grid = createGrid(molecule)
+    ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
+    rhoA = np.einsum('pi,ij,pj->p', ao, dm[0], ao)
+    rhoB = np.einsum('pi,ij,pj->p', ao, dm[1], ao)
+    rho = rhoA + rhoB
+
+    weights = partitioningWeights(grid.coords, molecule, atomIndex)
+    return np.einsum('i,i,i->', rho, grid.weights, weights)
 
