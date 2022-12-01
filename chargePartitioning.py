@@ -1,0 +1,34 @@
+import pyscf
+import numpy as np
+import periodictable
+import scipy
+
+def splitMoleculeToAtoms(molecule: pyscf.gto.Mole):
+    atomList = []
+    basis = molecule.basis
+    for atom in molecule._atom:
+        atomList.append(pyscf.gto.Mole(atom=atom, basis=basis))
+
+def createGrid(molecule: pyscf.gto.Mole, gridLevel=4):
+    grid = pyscf.dft.gen_grid.Grids(molecule)
+    grid.level = gridLevel
+    grid.build()
+    return grid
+
+def getLogNormalizer(x, molecule: pyscf.gto.Mole):
+    x = np.matrix(x)
+    distances = np.zeros((x.shape[0], len(molecule._atom)))
+    for i, atom in enumerate(molecule._atom):
+        atomSymbol = atom[0]
+        pos = atom[1]
+        covalentRadius = periodictable.getCovalentRadiosFromString(atomSymbol)
+        distances[:,i] = -(np.linalg.norm(x - pos, axis=1)**2) / (2 * covalentRadius**2)
+    return scipy.special.logsumexp(distances, axis=1)
+
+
+def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex):
+    nAtoms = len(molecule._atom)
+    normalizer = getLogNormalizer(x, molecule)
+    covalentRadius = periodictable.getCovalentRadiosFromString(molecule._atom[atomIndex][0])
+    pos = molecule._atom[atomIndex][1]
+    return np.exp( -np.linalg.norm(pos - x, axis=1)**2 /(2 * covalentRadius**2) - normalizer )
