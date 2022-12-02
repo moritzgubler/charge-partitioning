@@ -48,11 +48,15 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
     # temp_atom.spin = 1
     # temp_atom.build()
     
-    grid = createGrid(molecule)
+    grid = createGrid(molecule, gridLevel=3)
     ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
-    rhoA = np.einsum('pi,ij,pj->p', ao, dm[0], ao)
-    rhoB = np.einsum('pi,ij,pj->p', ao, dm[1], ao)
-    rho = rhoA + rhoB
+    # check if calculation was restricted or unrestricted:
+    if type(dm) is tuple:
+        rhoA = np.einsum('pi,ij,pj->p', ao, dm[0], ao)
+        rhoB = np.einsum('pi,ij,pj->p', ao, dm[1], ao)
+        rho = rhoA + rhoB
+    else:
+        rho = np.einsum('pi,ij,pj->p', ao, dm, ao)
 
     weights = partitioningWeights(grid.coords, molecule, atomIndex)
     return np.einsum('i,i,i->', rho, grid.weights, weights)
