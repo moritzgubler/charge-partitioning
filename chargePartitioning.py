@@ -48,7 +48,6 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
     # temp_atom.spin = 1
     # temp_atom.build()
     
-
     grid = createGrid(molecule)
     ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
     rhoA = np.einsum('pi,ij,pj->p', ao, dm[0], ao)
@@ -57,4 +56,10 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
 
     weights = partitioningWeights(grid.coords, molecule, atomIndex)
     return np.einsum('i,i,i->', rho, grid.weights, weights)
+
+def getAtomicCharges(molecule: pyscf.gto.Mole, dm):
+    charges = []
+    for i in range(len(molecule._atom)):
+        charges.append(integrateDensityOfAtom(molecule, dm, i))
+    return charges
 

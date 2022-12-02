@@ -29,11 +29,9 @@ cp1 = chargePartitioning.partitioningWeights(x, mol, 0)
 # cp2 = chargePartitioning.partitioningWeights(x, mol, 1)
 # cp3 = chargePartitioning.partitioningWeights(x, mol, 2)
 
-c = []
-for i in range(len(mol._atom)):
-    c.append(chargePartitioning.integrateDensityOfAtom(mol, dm, i))
-print('charges', c)
-print('total charge,', sum(c))
+charges = chargePartitioning.getAtomicCharges(mol, dm)
+print('charges', charges)
+print('total charge,', sum(charges))
 
 # plt.plot(x[:, 2], cp1)
 # plt.show()
