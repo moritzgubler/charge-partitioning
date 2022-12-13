@@ -2,39 +2,50 @@ import pyscf
 import numpy as np
 import chargePartitioning
 import matplotlib.pyplot as plt
+from pyscf import gto, dft
 
 mol = pyscf.gto.Mole()
-mol.atom = 'test.xyz'
-mol.unit = 'B'
-#mol.basis = 'sto-3g'
-mol.basis = 'ccpvtz'
+mol.atom = 'min.xyz'
+# mol.basis = 'sto-3g'
+mol.basis = 'ccpvdz'
 mol.symmetry = False
+mol.charge = 1
 mol.build()
 
+dft_res = dft.UKS(mol)
+dft_res.xc = 'lda'
+dft_res.newton()
+dft_res.kernel()
+
+dm_dft = dft_res.make_rdm1(ao_repr=True)
+# print(np.shape(dm_dft))
+dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+
+charges_dft = chargePartitioning.getAtomicCharges(mol, dm_dft)
+print('dft-charges', charges_dft)
+print('sum of dft charges', np.sum(charges_dft))
+
+quit()
+
+
 mf = mol.UHF(max_cycle=1000).run()
-dft = mol.UKS(max_cycle=1000)
-dft.xc = 'pbe'
-dft = dft.run()
+
+dm_hf = mf.make_rdm1(ao_repr=True)
+dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
+
+
+charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf)
+print('hf-charges', charges_hf)
+print('sum of hf charges', np.sum(charges_hf))
+
 mycc = mf.CCSD().run()
+dm_cc = mycc.make_rdm1(ao_repr=True)
+dm_cc = dm_cc[0] + dm_cc[1]
 
-dm = mycc.make_rdm1(ao_repr=True)
+charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc)
+print('cc - charges', charges_cc)
+print('sum of cc charges', np.sum(charges_cc))
 
-# chargePartitioning.splitMoleculeToAtoms(mol)
-nx = 1000
-ny = 1
-nz = 1
-x = np.zeros((nx,3))
-x[:,2] = np.linspace(-2,5,nx)
-cp1 = chargePartitioning.partitioningWeights(x, mol, 0)
-# cp2 = chargePartitioning.partitioningWeights(x, mol, 1)
-# cp3 = chargePartitioning.partitioningWeights(x, mol, 2)
-
-charges = chargePartitioning.getAtomicCharges(mol, dm)
-print('charges', charges)
-print('total charge,', sum(charges))
-
-# plt.plot(x[:, 2], cp1)
-# plt.show()
 
 quit()
 
