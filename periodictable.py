@@ -46,8 +46,9 @@ def getCovalentRadiosFromString(element):
 def get_rcov_dict():
     return rcovs
 
-def get_elementSymbolToNumber():
-    return elementSymbolToNumber
+
+def getNumberFromElementSymbol(elemnt_symbol: str):
+    return elementSymbolToNumber[elemnt_symbol]
 
 
 
