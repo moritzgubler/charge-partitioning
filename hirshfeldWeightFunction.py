@@ -17,13 +17,7 @@ def getLogNormalizer(x, molecule: pyscf.gto.Mole):
         atomSymbol = atom[0]
         pos = atom[1]
         protonCount = periodictable.getNumberFromElementSymbol(atomSymbol)
-
     return scipy.special.logsumexp(distances, axis=1)
-
-def createAtomicDensitiesFromFiles(molecule: pyscf.gto.Mole):
-        for atom in molecule._atom:
-            atomSymbol = atom[0]
-            protonCount = periodictable.getNumberFromElementSymbol(atomSymbol)
 
 
 def getDensityFileName(protonCount: int):
@@ -48,14 +42,70 @@ def interpolateDensity(protonCount: int):
     f_temp = scipy.interpolate.interp1d(r0, rho0, kind='cubic', bounds_error=False, fill_value=0) 
     return lambda x: abs(f_temp(x)) / 4 / np.pi
 
+def createDensityInterpolationDictionary(molecule: pyscf.gto.Mole):
+    functionDict = {}
+    for atom in molecule._atom:
+        atomSymbol = atom[0]
+        protonCount = periodictable.getNumberFromElementSymbol(atomSymbol)
+        if not atomSymbol in functionDict:
+            functionDict[atomSymbol] = interpolateDensity(protonCount)
+    return functionDict
+
+
+def getLogNormalizer(x, molecule: pyscf.gto.Mole, functionDict: dict):
+    x = np.matrix(x)
+    distances = np.zeros((x.shape[0], len(molecule._atom)))
+    for i, atom in enumerate(molecule._atom):
+        atomSymbol = atom[0]
+        pos = atom[1]
+        # print("dist", np.linalg.norm(pos - x, axis=1))
+        distances[:,i] = functionDict[atomSymbol](np.linalg.norm(x - pos, axis=1))
+        # print(atomSymbol, np.linalg.norm(pos - x, axis=1), distances[:, i])
+    # return scipy.special.logsumexp(distances, axis=1)
+    return np.sum(distances, axis=1)
+
+
+def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex, functionDict: dict):
+    # nAtoms = len(molecule._atom)
+    normalizer = getLogNormalizer(x, molecule, functionDict)
+    atomSymb = molecule._atom[atomIndex][0]
+    pos = molecule._atom[atomIndex][1]
+    # return np.exp( functionDict[atomSymb](np.linalg.norm(pos - x, axis=1)) - normalizer )
+    return functionDict[atomSymb](np.linalg.norm(pos - x, axis=1)) / normalizer
+
 if __name__ == '__main__':
+    mol = pyscf.gto.Mole()
+    mol.atom = '''O 0 0 0; H  0 0 -3; H 0 0 3'''
+    mol.unit = "B"
+    mol.basis = 'sto-3g'
+    mol.build()
+
+    functionDict = createDensityInterpolationDictionary(mol)
+    print(functionDict["H"](0.1))
+    N = 500
+    x = np.zeros((N, 3))
+    x[:, 2] = np.linspace(-7, 7, N)
+    # x = np.zeros((1, 3))
+    # x[0, 2] = 6
+
+
+    w1 = partitioningWeights(x, mol, 0, functionDict)
+    plt.plot(x[:, 2], w1)
+    w2 = partitioningWeights(x, mol, 1, functionDict)
+    plt.plot(x[:, 2], w2)
+    w3 = partitioningWeights(x, mol, 2, functionDict)
+    plt.plot(x[:, 2], w3)
+    plt.show()
+
+    quit()
+
     f = interpolateDensity(14)
     print('asdf')
-    x = np.linspace(0, 50, 100)
+    x = np.linspace(0, 2, 100)
     rho = f(x)
 
     int = scipy.integrate.quad(lambda x:  4 * np.pi * x**2 * f(x), 0, np.Infinity )[0]
     print(int)
-    plt.plot(x, np.log(rho))
+    plt.plot(x, (rho))
     plt.show()
     print(rho)
