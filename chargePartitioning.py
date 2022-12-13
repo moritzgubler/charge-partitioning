@@ -2,6 +2,7 @@ import pyscf
 import numpy as np
 import periodictable
 import scipy
+import hirshfeldWeightFunction
 
 covalentRadiusFactor = .6
 
@@ -48,6 +49,8 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
     # temp_atom.spin = 1
     # temp_atom.build()
     
+    functionDict = hirshfeldWeightFunction.createDensityInterpolationDictionary(molecule)
+
     grid = createGrid(molecule, gridLevel=3)
     ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
     # check if calculation was restricted or unrestricted:
@@ -58,7 +61,7 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, dm, atomIndex):
     else:
         rho = np.einsum('pi,ij,pj->p', ao, dm, ao)
 
-    weights = partitioningWeights(grid.coords, molecule, atomIndex)
+    weights = hirshfeldWeightFunction.partitioningWeights(grid.coords, molecule, atomIndex, functionDict)
     return np.einsum('i,i,i->', rho, grid.weights, weights)
 
 def getAtomicCharges(molecule: pyscf.gto.Mole, dm):

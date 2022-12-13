@@ -69,7 +69,7 @@ def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex, fu
     atomSymb = molecule._atom[atomIndex][0]
     pos = molecule._atom[atomIndex][1]
     # return np.exp( functionDict[atomSymb](np.linalg.norm(pos - x, axis=1)) - normalizer )
-    return (functionDict[atomSymb](np.linalg.norm(pos - x, axis=1))) / (normalizer)
+    return (functionDict[atomSymb](np.linalg.norm(pos - x, axis=1))) / (normalizer + 1e-13)
 
 if __name__ == '__main__':
     mol = pyscf.gto.Mole()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     functionDict = createDensityInterpolationDictionary(mol)
     N = 500
     x = np.zeros((N, 3))
-    x[:, 2] = np.linspace(-5, 5, N)
+    x[:, 2] = np.linspace(-50, 50, N)
     # x = np.zeros((1, 3))
     # x[0, 2] = 6
 

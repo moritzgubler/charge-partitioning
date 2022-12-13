@@ -4,16 +4,23 @@ import chargePartitioning
 import matplotlib.pyplot as plt
 from pyscf import gto, dft
 
+# mol = pyscf.gto.Mole()
+# mol.atom = 'min.xyz'
+# # mol.basis = 'sto-3g'
+# mol.basis = 'ccpvdz'
+# mol.symmetry = False
+# mol.charge = 1
+# mol.build()
+
 mol = pyscf.gto.Mole()
-mol.atom = 'min.xyz'
-# mol.basis = 'sto-3g'
+mol.atom = '''O 0 0 0; H  0 0 -2; H 0 0 2'''
+mol.unit = "B"
 mol.basis = 'ccpvdz'
 mol.symmetry = False
-mol.charge = 1
 mol.build()
 
 dft_res = dft.UKS(mol)
-dft_res.xc = 'lda'
+dft_res.xc = 'pbe'
 dft_res.newton()
 dft_res.kernel()
 
@@ -24,8 +31,6 @@ dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
 charges_dft = chargePartitioning.getAtomicCharges(mol, dm_dft)
 print('dft-charges', charges_dft)
 print('sum of dft charges', np.sum(charges_dft))
-
-quit()
 
 
 mf = mol.UHF(max_cycle=1000).run()
