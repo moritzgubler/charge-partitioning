@@ -40,6 +40,8 @@ def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld',
     
     charges = []
     for i in range(len(molecule._atom)):
-        charges.append(integrateDensityOfAtom(molecule, rho, i, grid, mode))
+        atomSymb = molecule._atom[i][0]
+        protonCount = periodictable.getNumberFromElementSymbol(atomSymb)
+        charges.append(-integrateDensityOfAtom(molecule, rho, i, grid, mode) + protonCount)
     return charges
 
