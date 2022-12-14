@@ -77,7 +77,9 @@ def getNormalizer(x, molecule: pyscf.gto.Mole, functionDict: dict):
 
 
 def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex, functionDict: dict):
-    # nAtoms = len(molecule._atom)
+    if not molecule.unit =="B":
+        print("""Molecule must have Bohr units when Hirshfeld partitioning is used. 
+         The molecule provided here has other units, proceed with care""")
     normalizer = getNormalizer(x, molecule, functionDict)
     atomSymb = molecule._atom[atomIndex][0]
     pos = molecule._atom[atomIndex][1]

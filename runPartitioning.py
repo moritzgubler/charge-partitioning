@@ -14,12 +14,12 @@ gridLevel = 3
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
 
+# create pyscf molecule object. Important, units must be bohr when hirshfeld partitioning is used.
 if len(sys.argv) != 3:
     print("Provide two arguments, first is xyz filename of molecule, second is total charge of molecule")
     quit()
 xyzFilename = sys.argv[1]
 totalCharge = float(sys.argv[2])
-
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
