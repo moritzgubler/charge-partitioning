@@ -3,7 +3,7 @@ import numpy as np
 import periodictable
 import scipy.interpolate
 import scipy.integrate
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 
 def hirshfeldPartitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex):
@@ -21,7 +21,7 @@ def getLogNormalizer(x, molecule: pyscf.gto.Mole):
 
 
 def getDensityFileName(protonCount: int):
-    return 'radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
+    return '/kernph/gubmor00/git/charge-partitioning/radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
 
 
 def readDensity(fileName: str):
