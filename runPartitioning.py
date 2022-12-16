@@ -5,29 +5,29 @@ import numpy as np
 import chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
-import pickle as pkl
 
 
 # sets the density of the atom centered integration grid.
 # A higher number corresponds to more grid points
-gridLevel = 3
+gridLevel = 5
 # choose charge partitioning method.
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
 
-# create pyscf molecule object. Important, units must be bohr when hirshfeld partitioning is used.
-if len(sys.argv) != 3:
-    print("Provide two arguments, first is xyz filename of molecule, second is total charge of molecule")
+if len(sys.argv) != 4:
+    print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is
+    frozen orbital level (should be zero or the total number of core electrons)""")
     quit()
 xyzFilename = sys.argv[1]
 totalCharge = float(sys.argv[2])
+core_count = int(sys.argv[3])
+
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
-mol.basis = 'augccpvdz'
+mol.basis = 'ccpvdz'
 mol.symmetry = False
 mol.charge = totalCharge
-mol.unit = 'B'
 mol.build()
 
 # DFT pbe calculation
@@ -74,7 +74,7 @@ with open('hf-'+ mol.basis +'.npy', 'wb') as f:
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
-mycc = mf.CCSD().run()
+mycc = mf.CCSD(frozen=core_count).run()
 dm_cc = mycc.make_rdm1(ao_repr=True)
 dm_cc = dm_cc[0] + dm_cc[1]
 charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
