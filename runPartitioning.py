@@ -5,6 +5,7 @@ import numpy as np
 import chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
+import electronCounter
 
 
 # sets the density of the atom centered integration grid.
@@ -14,25 +15,26 @@ gridLevel = 5
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 3:
     print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is
     frozen orbital level (should be zero or the total number of core electrons)""")
     quit()
 xyzFilename = sys.argv[1]
 totalCharge = float(sys.argv[2])
-core_count = int(sys.argv[3])
 
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
-mol.basis = 'ccpvdz'
+mol.basis = 'augccpvdz'
 mol.symmetry = False
 mol.charge = totalCharge
 mol.build()
 
+n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
+
 # DFT pbe calculation
 print("\n\nStart DFT calculation")
-dft_res = dft.UKS(mol)
+dft_res = dft.RKS(mol)
 dft_res.xc = 'pbe'
 dft_res.newton()
 dft_res.kernel()
@@ -47,7 +49,7 @@ with open('pbe-'+ mol.basis +'.npy', 'wb') as f:
 
 # DFT scan calculation
 print("\n\nStart DFT calculation")
-dft_res = dft.UKS(mol)
+dft_res = dft.RKS(mol)
 dft_res.xc = 'scan'
 dft_res.newton()
 dft_res.kernel()
@@ -62,7 +64,7 @@ with open('scan-'+ mol.basis +'.npy', 'wb') as f:
 
 # Hartree Fock calculation
 print("Start Hartree Fock calculation")
-mf = mol.UHF(max_cycle=1000).run()
+mf = mol.RHF(max_cycle=1000).run()
 dm_hf = mf.make_rdm1(ao_repr=True)
 dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
 charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
@@ -74,7 +76,7 @@ with open('hf-'+ mol.basis +'.npy', 'wb') as f:
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
-mycc = mf.CCSD(frozen=core_count).run()
+mycc = mf.CCSD(frozen=core_elec).run()
 dm_cc = mycc.make_rdm1(ao_repr=True)
 dm_cc = dm_cc[0] + dm_cc[1]
 charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
