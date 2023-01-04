@@ -36,6 +36,17 @@ elementSymbols = [' ', 'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na
         'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn',
         'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og']
 
+valenceElectronsDict = {
+'H': 1, 'He': 2,'Li': 1,'Be': 2,'B': 3,'C': 4,'N': 5,'O': 6,'F': 7,'Ne': 8,'Na': 1,'Mg': 2,'Al': 3,'Si': 4,'P': 5,'S': 6,
+'Cl': 7,'Ar': 8,'K': 1,'Ca': 2,'Sc': 2,'Ti': 2,'V': 2,'Cr': 1,'Mn': 2,'Fe': 2,'Co': 2,'Ni': 2,'Cu': 1,'Zn': 2,'Ga': 3,'Ge': 4,
+'As': 5,'Se': 6,'Br': 7,'Kr': 8,'Rb': 1,'Sr': 2,'Y': 2,'Zr': 2,'Nb': 1,'Mo': 1,'Tc': 2,'Ru': 1,'Rh': 1,'Pd': 18,'Ag': 1,'Cd': 2,
+'In': 3,'Sn': 4,'Sb': 5,'Te': 6,'I': 7,'Xe': 8,'Cs': 1,'Ba': 2,'La': 2,'Ce': 2,'Pr': 2,'Nd': 2,'Pm': 2,'Sm': 2,'Eu': 2,'Gd': 2,'Tb': 2,
+'Dy': 2,'Ho': 2,'Er': 2,'Tm': 2,'Yb': 2,'Lu': 2,'Hf': 2,'Ta': 2,'W': 2,'Re': 2,'Os': 2,'Ir': 2,'Pt': 1,'Au': 1,'Hg': 2,'Tl': 3,'Pb': 4,
+'Bi': 5,'Po': 6,'At': 7,'Rn': 8,'Fr': 1,'Ra': 2,'Ac': 2,'Th': 2,'Pa': 2,'U': 2,'Np': 2,'Pu': 2,'Am': 2,'Cm': 2,'Bk': 2,'Cf': 2,'Es': 2,
+'Fm': 2,'Md': 2,'No': 2,'Lr': 2,'Rf': 2,'Db': 2,'Sg': 2,'Bh': 2,'Hs': 2,'Mt': 2,'Ds': 1,'Rg': 1,'Cn': 2,'Nh': 3,'Fl': 4,'Mc': 5,'Lv': 6,
+'Ts': 7,'Og': 8
+}
+
 
 def getRcov_n(el):
     return rcovs[elementSymbols[el]]
@@ -51,7 +62,19 @@ def getNumberFromElementSymbol(elemnt_symbol: str):
     return elementSymbolToNumber[elemnt_symbol]
 
 
+def getCoreAndValenceElectrons(elementNumber):
+    if type(elementNumber) == int:
+        symb = elementSymbols[elementNumber]
+    elif type(elementNumber) == str:
+        symb = elementNumber
+    valenceElectrons = valenceElectronsDict[symb]
+    coreElectrons = elementSymbolToNumber[symb] - valenceElectrons
+    return coreElectrons, valenceElectrons
 
 
+if __name__ == '__main__':
+    print(getCoreAndValenceElectrons('C'))
+    for i in range(1, 19):
+        print(getCoreAndValenceElectrons(i))
 
 
