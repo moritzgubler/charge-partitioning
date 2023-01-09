@@ -11,7 +11,7 @@ import dc_dft
 
 # sets the density of the atom centered integration grid.
 # A higher number corresponds to more grid points
-gridLevel = 4
+gridLevel = 3
 # choose charge partitioning method.
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
@@ -74,7 +74,7 @@ charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
 print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 with open('hf-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_dft)
+    np.save(f, dm_hf)
 
 e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
 print('e_dcdft', e_dcdft)
@@ -82,7 +82,8 @@ print('e_dcdft', e_dcdft)
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
 mycc = mf.CCSD(frozen=core_elec)
-mycc.async_io = False
+# mycc.async_io = False
+mycc.direct = True
 mycc.run()
 e_cc = mycc.e_tot
 dm_cc = mycc.make_rdm1(ao_repr=True)
@@ -91,7 +92,7 @@ charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
 print('cc - charges', *charges_cc)
 print('sum of cc charges', np.sum(charges_cc), '\n\n')
 with open('cc-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_dft)
+    np.save(f, dm_cc)
 
 
 with open('charges.txt', mode='w') as f:
