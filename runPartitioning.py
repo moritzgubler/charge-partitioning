@@ -6,18 +6,18 @@ import chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
 import electronCounter
+import dc_dft
 
 
 # sets the density of the atom centered integration grid.
 # A higher number corresponds to more grid points
-gridLevel = 5
+gridLevel = 4
 # choose charge partitioning method.
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
 
-if len(sys.argv) != 3:
-    print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is
-    frozen orbital level (should be zero or the total number of core electrons)""")
+if len(sys.argv) != 4:
+    print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is basiss""")
     quit()
 xyzFilename = sys.argv[1]
 totalCharge = float(sys.argv[2])
@@ -25,7 +25,7 @@ totalCharge = float(sys.argv[2])
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
-mol.basis = 'augccpvdz'
+mol.basis = sys.argv[3]
 mol.symmetry = False
 mol.charge = totalCharge
 mol.build()
@@ -38,8 +38,9 @@ dft_res = dft.RKS(mol)
 dft_res.xc = 'pbe'
 dft_res.newton()
 dft_res.kernel()
+e_pbe = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
-dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
 charges_dft_pbe = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_pbe)
 print('sum of dft charges', np.sum(charges_dft_pbe), '\n\n')
@@ -53,8 +54,9 @@ dft_res = dft.RKS(mol)
 dft_res.xc = 'scan'
 dft_res.newton()
 dft_res.kernel()
+e_scan = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
-dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
 charges_dft_scan = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_scan)
 print('sum of dft charges', np.sum(charges_dft_scan), '\n\n')
@@ -66,19 +68,25 @@ with open('scan-'+ mol.basis +'.npy', 'wb') as f:
 print("Start Hartree Fock calculation")
 mf = mol.RHF(max_cycle=1000).run()
 dm_hf = mf.make_rdm1(ao_repr=True)
-dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
+e_hf = mf.e_tot
+# dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
 charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
 print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 with open('hf-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_dft)
 
+e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
+print('e_dcdft', e_dcdft)
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
-mycc = mf.CCSD(frozen=core_elec).run()
+mycc = mf.CCSD(frozen=core_elec)
+mycc.async_io = False
+mycc.run()
+e_cc = mycc.e_tot
 dm_cc = mycc.make_rdm1(ao_repr=True)
-dm_cc = dm_cc[0] + dm_cc[1]
+# dm_cc = dm_cc[0] + dm_cc[1]
 charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
 print('cc - charges', *charges_cc)
 print('sum of cc charges', np.sum(charges_cc), '\n\n')
@@ -86,53 +94,13 @@ with open('cc-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_dft)
 
 
-f = open('charges.txt', mode='w')
-f.write('# pbe, scan, hf, cc\n')
-for pbe, scan, hf, cc in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_cc):
-    f.write("%f  %f %f %f \n"%(pbe, scan, hf, cc))
-f.close()
+with open('charges.txt', mode='w') as f:
+    f.write('# pbe, scan, hf, cc\n')
+    for pbe, scan, hf, cc in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_cc):
+        f.write("%f  %f %f %f \n"%(pbe, scan, hf, cc))
 
-quit()
-
-mf = mol.UHF().run()
-mycc = mf.CCSD().run()
-
-dm1 = mycc.make_rdm1(ao_repr=True)
+with open('energies.txt', mode='w') as f: 
+    f.write('# pbe, scan, hf, cc, dc-dft\n')
+    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_cc, e_dcdft))
 
 
-grids = pyscf.dft.gen_grid.Grids(mol)
-grids.level = 4
-grids.build()
-
-weights = grids.weights
-
-print('c', grids.coords)
-
-
-plt.scatter(grids.coords[:,1], grids.coords[:,2], s=1)
-plt.show()
-# for g in grids.atom_grid:
-#     print('g', g)
-
-print(weights)
-
-nx = 100
-ny = 1
-nz = 1
-coords = np.zeros((nx,3))
-coords[:,2] = np.linspace(-2,5,nx)
-
-ngrids = 1
-blksize = min(8000, ngrids)
-# = np.empty(ngrids)
-
-
-ao = mol.eval_gto(eval_name='GTOval', coords=coords)
-rhoA = np.einsum('pi,ij,pj->p', ao, dm1[0], ao)
-rhoB = np.einsum('pi,ij,pj->p', ao, dm1[1], ao)
-
-# print('dm', dm1[0])
-# print('dm', dm1[1])
-plt.plot(coords[:,2], rhoA)
-plt.plot(coords[:,2], rhoB)
-plt.show()
