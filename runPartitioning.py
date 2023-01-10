@@ -86,6 +86,11 @@ mycc = mf.CCSD(frozen=core_elec)
 mycc.direct = True
 mycc.run()
 e_cc = mycc.e_tot
+
+with open('energies.txt', mode='w') as f: 
+    f.write('# pbe, scan, hf, cc, dc-dft\n')
+    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_cc, e_dcdft))
+
 dm_cc = mycc.make_rdm1(ao_repr=True)
 # dm_cc = dm_cc[0] + dm_cc[1]
 charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
@@ -99,9 +104,4 @@ with open('charges.txt', mode='w') as f:
     f.write('# pbe, scan, hf, cc\n')
     for pbe, scan, hf, cc in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_cc):
         f.write("%f  %f %f %f \n"%(pbe, scan, hf, cc))
-
-with open('energies.txt', mode='w') as f: 
-    f.write('# pbe, scan, hf, cc, dc-dft\n')
-    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_cc, e_dcdft))
-
 
