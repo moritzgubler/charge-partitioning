@@ -47,6 +47,8 @@ print('sum of dft charges', np.sum(charges_dft_pbe), '\n\n')
 del(dft_res)
 with open('pbe-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_dft)
+sys.stdout.flush()
+
 
 # DFT scan calculation
 print("\n\nStart DFT calculation")
@@ -63,6 +65,7 @@ print('sum of dft charges', np.sum(charges_dft_scan), '\n\n')
 del(dft_res)
 with open('scan-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_dft)
+sys.stdout.flush()
 
 # Hartree Fock calculation
 print("Start Hartree Fock calculation")
@@ -75,15 +78,18 @@ print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 with open('hf-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_hf)
+sys.stdout.flush()
 
 e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
 print('e_dcdft', e_dcdft)
+sys.stdout.flush()
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
 mycc = mf.CCSD(frozen=core_elec)
 # mycc.async_io = False
 mycc.direct = True
+mycc.incore_complete = True
 mycc.run()
 e_cc = mycc.e_tot
 
@@ -93,12 +99,13 @@ with open('energies.txt', mode='w') as f:
 
 dm_cc = mycc.make_rdm1(ao_repr=True)
 # dm_cc = dm_cc[0] + dm_cc[1]
+sys.stdout.flush()
 charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
 print('cc - charges', *charges_cc)
 print('sum of cc charges', np.sum(charges_cc), '\n\n')
 with open('cc-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_cc)
-
+sys.stdout.flush()
 
 with open('charges.txt', mode='w') as f:
     f.write('# pbe, scan, hf, cc\n')
