@@ -21,8 +21,8 @@ def getLogNormalizer(x, molecule: pyscf.gto.Mole):
 
 
 def getDensityFileName(protonCount: int):
-    # return 'radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
-    return '/kernph/gubmor00/git/charge-partitioning/radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
+    return 'radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
+    # return '/kernph/gubmor00/git/charge-partitioning/radialAtomicDensities/byNumber/{:03d}'.format(protonCount) + '-density.AE'
 
 
 def readDensity(fileName: str):
