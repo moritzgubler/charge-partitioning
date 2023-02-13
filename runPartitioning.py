@@ -31,6 +31,7 @@ mol.charge = totalCharge
 mol.build()
 
 n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
+core_elec = 0
 
 # DFT pbe calculation
 print("\n\nStart DFT calculation")
