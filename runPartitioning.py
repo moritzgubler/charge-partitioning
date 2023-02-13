@@ -32,6 +32,23 @@ mol.build()
 
 n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
 
+# DFT hf-scan calculation
+print("\n\nStart DFT-scan calculation")
+dft_res = dft.RKS(mol)
+dft_res.xc = 'HF, SCAN'
+dft_res.newton()
+dft_res.kernel()
+e_scan_hf = dft_res.e_tot
+dm_dft = dft_res.make_rdm1(ao_repr=True)
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+charges_dft_scan_hf = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+print('dft-charges', *charges_dft_scan_hf)
+print('sum of dft charges', np.sum(charges_dft_scan_hf), '\n\n')
+del(dft_res)
+with open('scan-hf-'+ mol.basis +'.npy', 'wb') as f:
+    np.save(f, dm_dft)
+sys.stdout.flush()
+
 # DFT pbe calculation
 print("\n\nStart DFT calculation")
 dft_res = dft.RKS(mol)
@@ -67,6 +84,7 @@ with open('scan-'+ mol.basis +'.npy', 'wb') as f:
     np.save(f, dm_dft)
 sys.stdout.flush()
 
+
 # Hartree Fock calculation
 print("Start Hartree Fock calculation")
 mf = mol.RHF(max_cycle=1000).run()
@@ -84,31 +102,31 @@ e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
 print('e_dcdft', e_dcdft)
 sys.stdout.flush()
 
-# Coupled Cluster calculation
-print("Start coupled cluster calculation")
-mycc = mf.CCSD(frozen=core_elec)
-# mycc.async_io = False
-mycc.direct = True
-mycc.incore_complete = True
-mycc.run()
-e_cc = mycc.e_tot
+# # Coupled Cluster calculation
+# print("Start coupled cluster calculation")
+# mycc = mf.CCSD(frozen=core_elec)
+# # mycc.async_io = False
+# mycc.direct = True
+# mycc.incore_complete = True
+# mycc.run()
+# e_cc = mycc.e_tot
 
 with open('energies.txt', mode='w') as f: 
-    f.write('# pbe, scan, hf, cc, dc-dft\n')
-    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_cc, e_dcdft))
+    f.write('# pbe, scan, hf, dc-dft, scan_hf\n')
+    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_dcdft, e_scan_hf))
 
-dm_cc = mycc.make_rdm1(ao_repr=True)
-# dm_cc = dm_cc[0] + dm_cc[1]
-sys.stdout.flush()
-charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
-print('cc - charges', *charges_cc)
-print('sum of cc charges', np.sum(charges_cc), '\n\n')
-with open('cc-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_cc)
-sys.stdout.flush()
+# dm_cc = mycc.make_rdm1(ao_repr=True)
+# # dm_cc = dm_cc[0] + dm_cc[1]
+# sys.stdout.flush()
+# charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
+# print('cc - charges', *charges_cc)
+# print('sum of cc charges', np.sum(charges_cc), '\n\n')
+# with open('cc-'+ mol.basis +'.npy', 'wb') as f:
+#     np.save(f, dm_cc)
+# sys.stdout.flush()
 
 with open('charges.txt', mode='w') as f:
-    f.write('# pbe, scan, hf, cc\n')
-    for pbe, scan, hf, cc in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_cc):
-        f.write("%f  %f %f %f \n"%(pbe, scan, hf, cc))
+    f.write('# pbe, scan, hf, scan_hf\n')
+    for pbe, scan, hf, scan_hf in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_dft_scan_hf):
+        f.write("%f %f %f %f \n"%(pbe, scan, hf, scan_hf))
 
