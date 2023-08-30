@@ -1,9 +1,9 @@
 import pyscf
 import numpy as np
-import periodictable
+import chargePartitioning.periodictable as periodictable
 import scipy
 import chargePartitioning.hirshfeldWeightFunction as hirshfeldWeightFunction
-import smoothVoronoiPartitioning
+import chargePartitioning.smoothVoronoiPartitioning as smoothVoronoiPartitioning
 from pyscf import dft
 
 

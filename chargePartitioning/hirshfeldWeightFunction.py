@@ -1,6 +1,6 @@
 import pyscf
 import numpy as np
-import periodictable
+import chargePartitioning.periodictable as periodictable
 import scipy.interpolate
 import scipy.integrate
 # import matplotlib.pyplot as plt
