@@ -2,7 +2,7 @@
 import sys
 import pyscf
 import numpy as np
-import chargePartitioning
+import chargePartitioning.chargePartitioning as chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
 import chargePartitioning.electronCounter as electronCounter
