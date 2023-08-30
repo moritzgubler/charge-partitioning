@@ -2,7 +2,7 @@ import pyscf
 import numpy as np
 import periodictable
 import scipy
-import hirshfeldWeightFunction
+import chargePartitioning.hirshfeldWeightFunction as hirshfeldWeightFunction
 import smoothVoronoiPartitioning
 from pyscf import dft
 

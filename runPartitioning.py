@@ -5,7 +5,7 @@ import numpy as np
 import chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
-import electronCounter
+import chargePartitioning.electronCounter as electronCounter
 # import dc_dft
 
 
