@@ -1,5 +1,5 @@
 import pyscf
-import periodictable
+import chargePartitioning.periodictable as periodictable
 
 def countElectrons(mol: pyscf.gto.Mole):
     symbs, coords = zip(*mol._atom)

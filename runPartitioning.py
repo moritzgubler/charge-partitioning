@@ -2,11 +2,11 @@
 import sys
 import pyscf
 import numpy as np
-import chargePartitioning
+import chargePartitioning.chargePartitioning as chargePartitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
-import electronCounter
-import dc_dft
+import chargePartitioning.electronCounter as electronCounter
+# import dc_dft
 
 
 # sets the density of the atom centered integration grid.
@@ -31,23 +31,7 @@ mol.charge = totalCharge
 mol.build()
 
 n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
-
-# DFT hf-scan calculation
-print("\n\nStart DFT-scan calculation")
-dft_res = dft.RKS(mol)
-dft_res.xc = 'HF, SCAN'
-dft_res.newton()
-dft_res.kernel()
-e_scan_hf = dft_res.e_tot
-dm_dft = dft_res.make_rdm1(ao_repr=True)
-# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_scan_hf = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
-print('dft-charges', *charges_dft_scan_hf)
-print('sum of dft charges', np.sum(charges_dft_scan_hf), '\n\n')
-del(dft_res)
-with open('scan-hf-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_dft)
-sys.stdout.flush()
+core_elec = 0
 
 # DFT pbe calculation
 print("\n\nStart DFT calculation")
@@ -62,8 +46,6 @@ charges_dft_pbe = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLev
 print('dft-charges', *charges_dft_pbe)
 print('sum of dft charges', np.sum(charges_dft_pbe), '\n\n')
 del(dft_res)
-with open('pbe-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_dft)
 sys.stdout.flush()
 
 
@@ -80,8 +62,53 @@ charges_dft_scan = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLe
 print('dft-charges', *charges_dft_scan)
 print('sum of dft charges', np.sum(charges_dft_scan), '\n\n')
 del(dft_res)
-with open('scan-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_dft)
+sys.stdout.flush()
+
+# DFT scan calculation
+print("\n\nStart DFT calculation")
+dft_res = dft.RKS(mol)
+dft_res.xc = 'rpbe'
+dft_res.newton()
+dft_res.kernel()
+e_rpbe = dft_res.e_tot
+dm_dft = dft_res.make_rdm1(ao_repr=True)
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+charges_dft_rpbe = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+print('dft-charges', *charges_dft_rpbe)
+print('sum of dft charges', np.sum(charges_dft_rpbe), '\n\n')
+del(dft_res)
+sys.stdout.flush()
+
+
+# DFT scan calculation
+print("\n\nStart DFT calculation")
+dft_res = dft.RKS(mol)
+dft_res.xc = 'blyp'
+dft_res.newton()
+dft_res.kernel()
+e_blyp = dft_res.e_tot
+dm_dft = dft_res.make_rdm1(ao_repr=True)
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+charges_dft_blyp = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+print('dft-charges', *charges_dft_blyp)
+print('sum of dft charges', np.sum(charges_dft_blyp), '\n\n')
+del(dft_res)
+sys.stdout.flush()
+
+
+# DFT scan calculation
+print("\n\nStart DFT calculation")
+dft_res = dft.RKS(mol)
+dft_res.xc = 'b3lyp'
+dft_res.newton()
+dft_res.kernel()
+e_b3lyp = dft_res.e_tot
+dm_dft = dft_res.make_rdm1(ao_repr=True)
+# dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+charges_dft_b3lyp = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+print('dft-charges', *charges_dft_b3lyp)
+print('sum of dft charges', np.sum(charges_dft_b3lyp), '\n\n')
+del(dft_res)
 sys.stdout.flush()
 
 
@@ -94,39 +121,35 @@ e_hf = mf.e_tot
 charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
 print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
-with open('hf-'+ mol.basis +'.npy', 'wb') as f:
-    np.save(f, dm_hf)
 sys.stdout.flush()
 
 e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
 print('e_dcdft', e_dcdft)
 sys.stdout.flush()
 
-# # Coupled Cluster calculation
-# print("Start coupled cluster calculation")
-# mycc = mf.CCSD(frozen=core_elec)
-# # mycc.async_io = False
-# mycc.direct = True
-# mycc.incore_complete = True
-# mycc.run()
-# e_cc = mycc.e_tot
+# Coupled Cluster calculation
+print("Start coupled cluster calculation")
+mycc = mf.CCSD(frozen=core_elec)
+# mycc.async_io = False
+mycc.direct = True
+mycc.incore_complete = True
+mycc.run()
+e_cc = mycc.e_tot
 
 with open('energies.txt', mode='w') as f: 
-    f.write('# pbe, scan, hf, dc-dft, scan_hf\n')
-    f.write("%f  %f %f %f %f \n"%(e_pbe, e_scan, e_hf, e_dcdft, e_scan_hf))
+    f.write('# pbe, scan, hf, cc, dc-dft\n')
+    f.write("%f %f %f %f %f %f %f \n"%(e_pbe, e_scan, e_rpbe, e_blyp, e_b3lyp, e_hf, e_cc))
 
-# dm_cc = mycc.make_rdm1(ao_repr=True)
-# # dm_cc = dm_cc[0] + dm_cc[1]
-# sys.stdout.flush()
-# charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
-# print('cc - charges', *charges_cc)
-# print('sum of cc charges', np.sum(charges_cc), '\n\n')
-# with open('cc-'+ mol.basis +'.npy', 'wb') as f:
-#     np.save(f, dm_cc)
-# sys.stdout.flush()
+dm_cc = mycc.make_rdm1(ao_repr=True)
+# dm_cc = dm_cc[0] + dm_cc[1]
+sys.stdout.flush()
+charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
+print('cc - charges', *charges_cc)
+print('sum of cc charges', np.sum(charges_cc), '\n\n')
+sys.stdout.flush()
 
 with open('charges.txt', mode='w') as f:
-    f.write('# pbe, scan, hf, scan_hf\n')
-    for pbe, scan, hf, scan_hf in zip(charges_dft_pbe, charges_dft_scan, charges_hf, charges_dft_scan_hf):
-        f.write("%f %f %f %f \n"%(pbe, scan, hf, scan_hf))
+    f.write('# pbe, scan, rpbe, blyp, b3lyp, hf, cc\n')
+    for pbe, scan, rpbe, blyp, b3lyp, hf, cc in zip(charges_dft_pbe, charges_dft_scan, charges_dft_rpbe, charges_dft_blyp, charges_dft_b3lyp, charges_hf, charges_cc):
+        f.write("%f %f %f %f %f %f %f\n"%(pbe, scan, rpbe, blyp, b3lyp, hf, cc))
 

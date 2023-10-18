@@ -1,4 +1,4 @@
-import periodictable
+import chargePartitioning.periodictable as periodictable
 import scipy
 import pyscf
 import numpy as np
