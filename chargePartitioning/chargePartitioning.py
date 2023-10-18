@@ -27,20 +27,45 @@ def integrateDensityOfAtom(molecule: pyscf.gto.Mole, rho: np.array, atomIndex: i
     
     return np.einsum('i,i,i->', rho, grid.weights, weights)
 
-def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld', gridLevel = 3):
-    grid = createGrid(molecule, gridLevel=gridLevel)
-    print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
-    ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
-    if type(densitymatrix) is tuple:
-        rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
-        rhoB = np.einsum('pi,ij,pj->p', ao, densitymatrix[1], ao)
-        rho = rhoA + rhoB
-    else:
-        rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
+def splitMoleculeToAtoms(molecule: pyscf.gto.Mole):
+    atomList = []
+    basis = molecule.basis
+    for atom in molecule._atom:
+        if periodictable.valenceElectronsDict[atom[0]] % 2 == 0:
+            spin = 0
+        else:
+            spin = 1
+        atomList.append(pyscf.gto.M(atom=[atom], basis=basis, spin = spin, unit='B'))
+        # atomList[-1].build()
+    return atomList
+
+def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld', gridLevel = 3, fastMethod = True):
+    if not fastMethod:
+        grid = createGrid(molecule, gridLevel=gridLevel)
+        print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
+        ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
+        if type(densitymatrix) is tuple:
+            rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
+            rhoB = np.einsum('pi,ij,pj->p', ao, densitymatrix[1], ao)
+            rho = rhoA + rhoB
+        else:
+            rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
     
     charges = []
+    if fastMethod:
+        atomList = splitMoleculeToAtoms(molecule)
     for i in range(len(molecule._atom)):
         atomSymb = molecule._atom[i][0]
+        if fastMethod:
+            grid = createGrid(atomList[i], gridLevel)
+            print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
+            ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
+            if type(densitymatrix) is tuple or len(densitymatrix.shape) == 3:
+                rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
+                rhoB = np.einsum('pi,ij,pj->p', ao, densitymatrix[1], ao)
+                rho = rhoA + rhoB
+            else:
+                rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
         protonCount = periodictable.getNumberFromElementSymbol(atomSymb)
         charges.append(-integrateDensityOfAtom(molecule, rho, i, grid, mode) + protonCount)
     return charges
