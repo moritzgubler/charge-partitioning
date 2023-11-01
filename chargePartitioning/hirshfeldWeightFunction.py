@@ -9,20 +9,8 @@ import os
 def hirshfeldPartitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex):
     nAtoms = len(molecule._atom)
 
-
-def getLogNormalizer(x, molecule: pyscf.gto.Mole):
-    x = np.matrix(x)
-    distances = np.zeros((x.shape[0], len(molecule._atom)))
-    for i, atom in enumerate(molecule._atom):
-        atomSymbol = atom[0]
-        pos = atom[1]
-        protonCount = periodictable.getNumberFromElementSymbol(atomSymbol)
-    return scipy.special.logsumexp(distances, axis=1)
-
-
 def getDensityFileName(protonCount: int):
     return os.path.join(os.path.dirname(__file__), 'radialAtomicDensities', 'byNumber', "%03d-density.AE"%(protonCount))
-
 
 def readDensity(fileName: str):
     f = open(fileName, mode='r')
@@ -54,7 +42,6 @@ def interpolateLogDensity(protonCount: int):
     rho0 = np.log(rho0)
     return scipy.interpolate.interp1d(r0, rho0, kind='cubic', bounds_error=False, fill_value='extrapolate') 
 
-
 def createDensityInterpolationDictionary(molecule: pyscf.gto.Mole):
     functionDict = {}
     for atom in molecule._atom:
@@ -64,7 +51,6 @@ def createDensityInterpolationDictionary(molecule: pyscf.gto.Mole):
             functionDict[atomSymbol] = interpolateLogDensity(protonCount)
     return functionDict
 
-
 def getNormalizer(x, molecule: pyscf.gto.Mole, functionDict: dict):
     x = np.matrix(x)
     distances = np.zeros((x.shape[0], len(molecule._atom)))
@@ -73,15 +59,12 @@ def getNormalizer(x, molecule: pyscf.gto.Mole, functionDict: dict):
         pos = atom[1]
         distances[:,i] = functionDict[atomSymbol](np.linalg.norm(x - pos, axis=1))
     return scipy.special.logsumexp(distances, axis=1)
-    # return np.sum(distances, axis=1)
-
 
 def partitioningWeights(x : np.array(3), molecule: pyscf.gto.Mole, atomIndex, functionDict: dict):
     normalizer = getNormalizer(x, molecule, functionDict)
     atomSymb = molecule._atom[atomIndex][0]
     pos = molecule._atom[atomIndex][1]
     return np.exp( functionDict[atomSymb](np.linalg.norm(pos - x, axis=1)) - normalizer )
-    # return (functionDict[atomSymb](np.linalg.norm(pos - x, axis=1))) / (normalizer + 1e-13)
 
 if __name__ == '__main__':
     mol = pyscf.gto.Mole()
@@ -96,6 +79,7 @@ if __name__ == '__main__':
     x[:, 2] = np.linspace(-50, 50, N)
     # x = np.zeros((1, 3))
     # x[0, 2] = 6
+    import matplotlib.pyplot as plt
     w1 = partitioningWeights(x, mol, 0, functionDict)
     plt.plot(x[:, 2], w1)
     w2 = partitioningWeights(x, mol, 1, functionDict)

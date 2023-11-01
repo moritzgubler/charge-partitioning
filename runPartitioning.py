@@ -2,7 +2,7 @@
 import sys
 import pyscf
 import numpy as np
-import chargePartitioning.chargePartitioning as chargePartitioning
+import chargePartitioning.Partitioning as Partitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
 import chargePartitioning.electronCounter as electronCounter
@@ -42,7 +42,7 @@ dft_res.kernel()
 e_pbe = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
 # dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_pbe = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+charges_dft_pbe = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_pbe)
 print('sum of dft charges', np.sum(charges_dft_pbe), '\n\n')
 del(dft_res)
@@ -58,7 +58,7 @@ dft_res.kernel()
 e_scan = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
 # dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_scan = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+charges_dft_scan = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_scan)
 print('sum of dft charges', np.sum(charges_dft_scan), '\n\n')
 del(dft_res)
@@ -73,7 +73,7 @@ dft_res.kernel()
 e_rpbe = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
 # dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_rpbe = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+charges_dft_rpbe = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_rpbe)
 print('sum of dft charges', np.sum(charges_dft_rpbe), '\n\n')
 del(dft_res)
@@ -89,7 +89,7 @@ dft_res.kernel()
 e_blyp = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
 # dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_blyp = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+charges_dft_blyp = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_blyp)
 print('sum of dft charges', np.sum(charges_dft_blyp), '\n\n')
 del(dft_res)
@@ -105,7 +105,7 @@ dft_res.kernel()
 e_b3lyp = dft_res.e_tot
 dm_dft = dft_res.make_rdm1(ao_repr=True)
 # dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-charges_dft_b3lyp = chargePartitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+charges_dft_b3lyp = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
 print('dft-charges', *charges_dft_b3lyp)
 print('sum of dft charges', np.sum(charges_dft_b3lyp), '\n\n')
 del(dft_res)
@@ -118,14 +118,14 @@ mf = mol.RHF(max_cycle=1000).run()
 dm_hf = mf.make_rdm1(ao_repr=True)
 e_hf = mf.e_tot
 # dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
-charges_hf = chargePartitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
+charges_hf = Partitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
 print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 sys.stdout.flush()
 
-e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
-print('e_dcdft', e_dcdft)
-sys.stdout.flush()
+# e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
+# print('e_dcdft', e_dcdft)
+# sys.stdout.flush()
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
@@ -143,7 +143,7 @@ with open('energies.txt', mode='w') as f:
 dm_cc = mycc.make_rdm1(ao_repr=True)
 # dm_cc = dm_cc[0] + dm_cc[1]
 sys.stdout.flush()
-charges_cc = chargePartitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
+charges_cc = Partitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
 print('cc - charges', *charges_cc)
 print('sum of cc charges', np.sum(charges_cc), '\n\n')
 sys.stdout.flush()
