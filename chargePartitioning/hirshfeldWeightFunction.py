@@ -64,9 +64,7 @@ def getNormalizer(x, pos: np.array, elements: list, functionDict: dict, lat = No
     x = np.matrix(x)
     distances = np.zeros((x.shape[0], poscopy.shape[0]))
     for i in range(poscopy.shape[0]):
-        atomSymbol = element_copy[i]
-        atom_pos = poscopy[i, :]
-        distances[:,i] = functionDict[atomSymbol](np.linalg.norm(x - atom_pos, axis=1))
+        distances[:,i] = functionDict[element_copy[i]](np.linalg.norm(x - poscopy[i, :], axis=1))
     return scipy.special.logsumexp(distances, axis=1)
 
 def countGostCellsFractional(lat, cutoff):
