@@ -47,14 +47,83 @@ def createDensityInterpolationDictionary(elements: list):
             functionDict[atomSymbol] = interpolateLogDensity(protonCount)
     return functionDict
 
-def getNormalizer(x, pos: np.array, elements: list, functionDict: dict):
+def getNormalizer(x, pos: np.array, elements: list, functionDict: dict, lat = None, cutoff_bohr = 10.0):
+
+    if lat is not None:
+        periodic = True
+    else:
+        periodic = False
+    
+    if not periodic:
+        poscopy = np.copy(pos)
+        element_copy = elements.copy()
+    else:
+        poscopy, element_copy = periodicePositions(lat, pos, elements, cutoff_bohr)
+
+
     x = np.matrix(x)
-    distances = np.zeros((x.shape[0], pos.shape[0]))
-    for i in range(pos.shape[0]):
-        atomSymbol = elements[i]
-        atom_pos = pos[i, :]
+    distances = np.zeros((x.shape[0], poscopy.shape[0]))
+    for i in range(poscopy.shape[0]):
+        atomSymbol = element_copy[i]
+        atom_pos = poscopy[i, :]
         distances[:,i] = functionDict[atomSymbol](np.linalg.norm(x - atom_pos, axis=1))
     return scipy.special.logsumexp(distances, axis=1)
+
+def countGostCellsFractional(lat, cutoff):
+    a = lat[0, :]
+    b = lat[1, :]
+    c = lat[2, :]
+
+    ab = np.cross(a, b)
+    ab = ab / np.linalg.norm(ab)
+    ac = np.cross(a, c)
+    ac = ac / np.linalg.norm(ac)
+    bc = np.cross(b, c)
+    bc = bc / np.linalg.norm(bc)
+
+    proj_a = np.abs( np.sum(a * bc ) )
+    proj_b = np.abs( np.sum(b * ac ) )
+    proj_c = np.abs( np.sum(c * ab ) )
+
+    return np.array([cutoff / proj_a, cutoff / proj_b, cutoff / proj_c])
+
+def periodicePositions(lat, pos, elements, cutoff):
+    nat = pos.shape[0]
+    lens = countGostCellsFractional(lat, cutoff)
+    frac_lens = np.ceil(lens).astype('int')
+
+    a_inv = np.linalg.inv(lat)
+
+    red = np.zeros(pos.shape)
+
+    for i in range(pos.shape[0]):
+        red[i, :] =  pos[i, :] @ a_inv # = (a_inv.T @ pos[i, :].T).T
+
+    images = []
+    element_images = []
+    for iat in range(pos.shape[0]):
+        for i in range(-frac_lens[0], frac_lens[0] + 1):
+            for j in range(-frac_lens[1], frac_lens[1] + 1):
+                for k in range(-frac_lens[2], frac_lens[2] + 1):
+                    if i == 0 and j == 0 and k == 0:
+                        continue
+                    lat_shift = red[iat, :] + np.array([i, j, k])
+                    accept_i = i ==0 or abs(lat_shift[0]) < lens[0] or abs(lat_shift[0] - 1) < lens[0]
+                    accept_j = j ==0 or abs(lat_shift[1]) < lens[1] or abs(lat_shift[1] - 1) < lens[1]
+                    accept_k = k ==0 or abs(lat_shift[2]) < lens[2] or abs(lat_shift[2] - 1) < lens[2]
+                    if accept_i and accept_j and accept_k:
+                        images.append(lat.T @ lat_shift)
+                        element_images.append(elements[iat])
+
+    allnat = nat + len(element_images)
+    all_elements = elements + element_images
+    all_pos = np.zeros((allnat, 3))
+    all_pos[:nat, :] = pos
+    for i in range(nat, allnat):
+        all_pos[i, :] = images[i-nat]
+    return all_pos, all_elements
+
+
 
 def partitioningWeights(x : np.array(3), atom_position: np. array, atomic_density_function, normalizer: np.array):
     """
@@ -122,6 +191,18 @@ if __name__ == '__main__':
     w3 = partitioningWeights_molecule(x, mol, 2, functionDict)
     plt.plot(x[:, 2], w3)
     plt.show()
+
+    from ase.atoms import Atoms
+    from ase.io import write
+    from ase.lattice.cubic import Diamond
+
+    ats = Diamond('Si')
+
+    new_pos, new_elements = periodicePositions(ats.cell, ats.get_positions(), ats.get_chemical_symbols(), 5)
+
+    newAts = Atoms(new_elements, new_pos)
+    write('bulk.extxyz', ats)
+    write('clust.xyz', newAts)
 
     quit()
 
