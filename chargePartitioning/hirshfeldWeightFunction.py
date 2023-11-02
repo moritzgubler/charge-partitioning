@@ -125,7 +125,7 @@ def periodicePositions(lat, pos, elements, cutoff):
 
 
 
-def partitioningWeights(x : np.array(3), atom_position: np. array, atomic_density_function, normalizer: np.array):
+def partitioningWeights(x : np.array(3), atom_position: np. array, atomic_density_function, normalizer: np.array, lat = None, cutoff_bohr = 10.0):
     """
     x: (gridlen, 3)
     atompos: 3
@@ -133,7 +133,21 @@ def partitioningWeights(x : np.array(3), atom_position: np. array, atomic_densit
     atomic_density_function: function
     normalizer (gridlen), construct with getNormalizer
     """
-    return np.exp( atomic_density_function(np.linalg.norm(atom_position - x, axis=1)) - normalizer )
+    if lat is not None:
+        periodic = True
+    else:
+        periodic = False
+    
+    # weights = np.empty(x.shape[0])
+    weights = np.exp( atomic_density_function(np.linalg.norm(atom_position - x, axis=1)) - normalizer )
+
+    if periodic:
+        p_images, elem_images = periodicePositions(lat, np.reshape(atom_position, (1, 3)), ['C'], cutoff_bohr)
+        for i in range(1, len(elem_images)):
+            weights = weights + np.exp(atomic_density_function(np.linalg.norm(p_images[i, :] - x, axis=1)) - normalizer)
+
+    # return np.exp( atomic_density_function(np.linalg.norm(atom_position - x, axis=1)) - normalizer )
+    return weights
 
 def partitionCharges(x_grid, rho_grid, positions, elements):
     functionDict = createDensityInterpolationDictionary(elements)
