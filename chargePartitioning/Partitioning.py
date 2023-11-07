@@ -17,8 +17,8 @@ def createGrid(molecule: pyscf.gto.Mole, gridLevel=4):
 
 def integrateDensityOfAtom(molecule: pyscf.gto.Mole, rho: np.array, atomIndex: int, grid: pyscf.dft.gen_grid.Grids, mode='hirshfeld'):
     if mode == 'hirshfeld':
-        functionDict = hirshfeldWeightFunction.createDensityInterpolationDictionary(molecule)
-        weights = hirshfeldWeightFunction.partitioningWeights(grid.coords, molecule, atomIndex, functionDict)
+        functionDict = hirshfeldWeightFunction.createDensityInterpolationDictionary(molecule.elements)
+        weights = hirshfeldWeightFunction.partitioningWeights_molecule(grid.coords, molecule, atomIndex, functionDict)
     elif mode == 'voronoi':
         weights = smoothVoronoiPartitioning.partitioningWeights(grid.coords, molecule, atomIndex)
     else:
