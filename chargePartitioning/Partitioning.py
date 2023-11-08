@@ -58,7 +58,7 @@ def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld',
         atomSymb = molecule._atom[i][0]
         if fastMethod:
             grid = createGrid(atomList[i], gridLevel)
-            print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
+            # print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
             ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
             if type(densitymatrix) is tuple or len(densitymatrix.shape) == 3:
                 rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
