@@ -24,7 +24,7 @@ gridLevel = 5
 # must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
 
-restricted = True
+restricted = False
 
 if len(sys.argv) != 4:
     print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is basiss""")
@@ -44,7 +44,6 @@ mol.build()
 n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
 core_elec = 0
 
-
 def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshfeld'):
     if restricted:
         dft_res = dft.RKS(mol)
@@ -55,20 +54,17 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
     dft_res.kernel()
     e_pot = dft_res.e_tot
     dm_dft = dft_res.make_rdm1(ao_repr=True)
-    _, e_elec = dft_res.energy_elec(dm_dft)
+    # _, e_elec = dft_res.energy_elec(dm_dft)
     if not restricted:
         dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
+    dft_temp = mol.RHF()
+    _, e_elec = dft_temp.energy_elec(dm_dft)
     charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
     sys.stdout.flush()
     return e_pot, charges, e_elec, dm_dft
 
-
-
 results = dict()
 settings = dict()
-summary = dict()
-summary['settings'] = settings
-summary['results'] = results
 functionals = ['lda', 'pbe', 'pbe0', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
 
 settings['basisset'] = mol.basis
@@ -90,7 +86,6 @@ for functional in functionals:
     # print('dft-charges', *charges)
     print('sum of dft charges', np.sum(charges), '\n')
     sys.stdout.flush()
-
 
 # Hartree Fock calculation
 print("Start Hartree Fock calculation")
@@ -153,16 +148,17 @@ results['hf']['ediff'] = results['hf']['e_coulomb'] - results['cc']['e_coulomb']
 print('hf ediff', ediff, results['hf']['ediff'])
 
 for functional in functionals:
-    if restricted:
-        dft_res = dft.RKS(mol)
-    else:
-        dft_res = dft.UKS(mol)
-    dft_res.xc = functional
+    dft_res = mol.RHF()
     # print('%s ecoul'%functional, dft_res.energy_elec(results[functional]['density_matrix']))
     results[functional]['ediff'] = results[functional]['e_coulomb'] - results['cc']['e_coulomb']
-    _, results[functional]['charge_ediff'] = dft_res.energy_elec(results[functional]['density_matrix'] - results['cc']['density_matrix'])
+    _, temp = dft_res.energy_elec(results[functional]['density_matrix'] - results['cc']['density_matrix'])
+    print('adding result')
+    results[functional]['charge_ediff'] = temp
     print('%s ecdiff'%functional, results[functional]['charge_ediff'], results[functional]['ediff'])
 
+summary = dict()
+summary['settings'] = settings
+summary['results'] = results
 print('\n')
 with open("result.json", "w") as f:
     json.dump(summary, f, indent=4, sort_keys=True, cls = NumpyArrayEncoder)
