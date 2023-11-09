@@ -70,3 +70,13 @@ def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld',
         charges.append(-integrateDensityOfAtom(molecule, rho, i, grid, mode) + protonCount)
     return charges
 
+def getRho(molecule: pyscf.gto.Mole, densitymatrix, gridLevel = 5):
+    grid = createGrid(molecule, gridLevel=gridLevel)
+    ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
+    if type(densitymatrix) is tuple:
+        rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
+        rhoB = np.einsum('pi,ij,pj->p', ao, densitymatrix[1], ao)
+        rho = rhoA + rhoB
+    else:
+        rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
+    return rho
