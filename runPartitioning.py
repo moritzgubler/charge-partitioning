@@ -10,6 +10,8 @@ import chargePartitioning.electronCounter as electronCounter
 import json
 from json import JSONEncoder
 import os
+from ase.io import read, write
+from ase.atoms import Atoms
 
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
@@ -20,6 +22,7 @@ class NumpyArrayEncoder(JSONEncoder):
 
 gridLevel = 5
 mode = 'hirshfeld'
+do_cc = False
 
 results_dir = 'results/'
 if not os.path.exists(results_dir):
@@ -44,10 +47,12 @@ mol.atom = xyzFilename
 mol.basis = sys.argv[3]
 mol.symmetry = False
 mol.charge = totalCharge
-n_elec, core_elec, val_elec = electronCounter.countElectrons_symb(mol.elements)
+temp_ats = read(xyzFilename)
+n_elec, core_elec, val_elec = electronCounter.countElectrons_symb(temp_ats.get_chemical_symbols())
 core_elec = 0
 
-mol.spin = n_elec % 2
+mol.spin = (n_elec - totalCharge) % 2
+print(mol.charge, mol.spin)
 mol.build()
 
 
@@ -68,11 +73,12 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
     _, e_elec = dft_temp.energy_elec(dm_dft)
     charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
     sys.stdout.flush()
-    return e_pot, charges, e_elec, dm_dft
+    return e_pot, charges, e_elec, dm_dft, dft_res.mo_occ, dft_res.mo_energy
 
 results = dict()
 settings = dict()
-functionals = ['lda', 'pbe', 'pbe0', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
+# functionals = ['lda', 'pbe', 'pbe0', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
+functionals = ['scan']
 
 settings['basisset'] = mol.basis
 settings['restricted'] = restricted
@@ -89,15 +95,19 @@ coul_diff = 'e_coulomb_diff'
 charge_diff_energy = 'charge_diff_energy'
 abs_charge_diff_int = 'abs_charge_diff_int'
 squared_charge_diff_int = 'squared_charge_diff_int' 
+occ_s = 'orb_occupancies'
+orb_energies_s = 'orb_energies'
 
 for functional in functionals:
     print("Start %s calculation"%functional)
     results[functional] = dict()
-    e_tot, charges, e_coul, dm_dft = DFT_charges(mol, functional, restricted, gridLevel)
+    e_tot, charges, e_coul, dm_dft, orb_occ, orb_en = DFT_charges(mol, functional, restricted, gridLevel)
     results[functional][etot_s] = e_tot
     results[functional][charges_s] = charges
     results[functional][e_coul_s] = e_coul
     results[functional][dm_s] = dm_dft
+    results[functional][occ_s] = orb_occ
+    results[functional][orb_energies_s] = orb_en
     print('calculation of function %s done'%functional)
     print('coulomb energy', e_coul)
     print('sum of dft charges', np.sum(charges), '\n')
@@ -124,56 +134,61 @@ results['hf'][charges_s] = charges_hf
 results['hf'][etot_s] = e_hf
 results['hf'][e_coul_s] = e_coul
 results['hf'][dm_s] = dm_hf
+results['hf'][occ_s] = mf.mo_occ
+results['hf'][orb_energies_s] = mf.mo_energy
 
-# Coupled Cluster calculation
-print("Start coupled cluster calculation")
-mycc = mf.CCSD(frozen=core_elec)
-# mycc.async_io = False
-mycc.direct = True
-mycc.incore_complete = True
-mycc.run()
-e_cc = mycc.e_tot
+if do_cc:
+    # Coupled Cluster calculation
+    print("Start coupled cluster calculation")
+    mycc = mf.CCSD(frozen=core_elec)
+    # mycc.async_io = False
+    mycc.direct = True
+    mycc.incore_complete = True
+    mycc.run()
+    e_cc = mycc.e_tot
 
-dm_cc = mycc.make_rdm1(ao_repr=True)
-if not restricted:
-    dm_cc = dm_cc[0] + dm_cc[1]
-sys.stdout.flush()
-charges_cc = Partitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
-_, e_coul = mf.energy_elec(dm_cc)
-print('coulomb energy', e_coul)
-print('sum of cc charges', np.sum(charges_cc), '\n\n')
-sys.stdout.flush()
+    dm_cc = mycc.make_rdm1(ao_repr=True)
+    if not restricted:
+        dm_cc = dm_cc[0] + dm_cc[1]
+    sys.stdout.flush()
+    charges_cc = Partitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
+    _, e_coul = mf.energy_elec(dm_cc)
+    print('coulomb energy', e_coul)
+    print('sum of cc charges', np.sum(charges_cc), '\n\n')
+    sys.stdout.flush()
 
-results['cc'] = dict()
-results['cc'][charges_s] = charges_cc
-results['cc'][etot_s] = e_cc
-results['cc'][e_coul_s] = e_coul
-results['cc'][dm_s] = dm_cc
-results['cc'][coul_diff] = 0.0
-results['cc'][charge_diff_energy] = 0.0
-results['cc'][abs_charge_diff_int] = 0.0
-results['cc'][squared_charge_diff_int] = 0.0
-rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
+    results['cc'] = dict()
+    results['cc'][charges_s] = charges_cc
+    results['cc'][etot_s] = e_cc
+    results['cc'][e_coul_s] = e_coul
+    results['cc'][dm_s] = dm_cc
+    results['cc'][coul_diff] = 0.0
+    results['cc'][charge_diff_energy] = 0.0
+    results['cc'][abs_charge_diff_int] = 0.0
+    results['cc'][squared_charge_diff_int] = 0.0
 
-_, ediff = mf.energy_elec(dm_hf - dm_cc)
-results['hf'][charge_diff_energy] = ediff
-results['hf'][coul_diff] = results['hf'][e_coul_s] - results['cc'][e_coul_s]
-print('hf ediff', ediff, results['hf'][coul_diff])
-rho, grid = Partitioning.getRho(mol, results['hf'][dm_s], gridLevel)
-results['hf'][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc ) * grid.weights)
-results['hf'][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int])
+    _, ediff = mf.energy_elec(dm_hf - dm_cc)
 
-for functional in functionals:
-    dft_res = mol.RHF()
-    results[functional][coul_diff] = results[functional][e_coul_s] - results['cc'][e_coul_s]
-    _, temp = dft_res.energy_elec(results[functional][dm_s] - results['cc'][dm_s])
-    results[functional][charge_diff_energy] = temp
-    print('%s ecdiff, e_edif'%functional, results[functional][charge_diff_energy], results[functional][coul_diff])
-    rho, grid = Partitioning.getRho(mol, results[functional][dm_s], gridLevel)
-    results[functional][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc )* grid.weights)
-    results[functional][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-    print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int])
+    rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
+
+    results['hf'][charge_diff_energy] = ediff
+    results['hf'][coul_diff] = results['hf'][e_coul_s] - results['cc'][e_coul_s]
+    print('hf ecdiff, ediff', ediff, results['hf'][coul_diff])
+    rho, grid = Partitioning.getRho(mol, results['hf'][dm_s], gridLevel)
+    results['hf'][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc ) * grid.weights)
+    results['hf'][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
+    print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int])
+
+    for functional in functionals:
+        dft_res = mol.RHF()
+        results[functional][coul_diff] = results[functional][e_coul_s] - results['cc'][e_coul_s]
+        _, temp = dft_res.energy_elec(results[functional][dm_s] - results[functional][dm_s])
+        results[functional][charge_diff_energy] = temp
+        print('%s ecdiff, e_edif'%functional, results[functional][charge_diff_energy], results[functional][coul_diff])
+        rho, grid = Partitioning.getRho(mol, results[functional][dm_s], gridLevel)
+        results[functional][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc )* grid.weights)
+        results[functional][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
+        print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int])
 
 
 summary = dict()
