@@ -9,6 +9,7 @@ import chargePartitioning.electronCounter as electronCounter
 # import dc_dft
 import json
 from json import JSONEncoder
+import os
 
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
@@ -17,12 +18,12 @@ class NumpyArrayEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 
 
-# sets the density of the atom centered integration grid.
-# A higher number corresponds to more grid points
 gridLevel = 5
-# choose charge partitioning method.
-# must be either 'hirshfeld' or 'voronoi'
 mode = 'hirshfeld'
+
+results_dir = 'results/'
+if not os.path.exists(results_dir):
+   os.makedirs(results_dir)
 
 restricted = False
 
@@ -32,17 +33,23 @@ if len(sys.argv) != 4:
 xyzFilename = sys.argv[1]
 totalCharge = float(sys.argv[2])
 
+results_fname = os.path.split(xyzFilename)[1]
+results_fname = os.path.splitext(results_fname)[0]
+results_fname = "%s%s_%s.json"%(results_dir, results_fname, sys.argv[3])
+print("results", results_fname)
+
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
 mol.basis = sys.argv[3]
 mol.symmetry = False
 mol.charge = totalCharge
-mol.spin = 0
+n_elec, core_elec, val_elec = electronCounter.countElectrons_symb(mol.elements)
+core_elec = 0
+
+mol.spin = n_elec % 2
 mol.build()
 
-n_elec, core_elec, val_elec = electronCounter.countElectrons(mol)
-core_elec = 0
 
 def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshfeld'):
     if restricted:
@@ -73,17 +80,26 @@ settings['total_charge'] = mol.charge
 settings['spin'] = mol.spin
 settings['gridlevel'] = gridLevel
 
+
+etot_s = 'etot'
+charges_s = 'charges'
+e_coul_s = 'e_coulomb'
+dm_s = 'density_matrix'
+coul_diff = 'e_coulomb_diff'
+charge_diff_energy = 'charge_diff_energy'
+abs_charge_diff_int = 'abs_charge_diff_int'
+squared_charge_diff_int = 'squared_charge_diff_int' 
+
 for functional in functionals:
     print("Start %s calculation"%functional)
     results[functional] = dict()
     e_tot, charges, e_coul, dm_dft = DFT_charges(mol, functional, restricted, gridLevel)
-    results[functional]['e_tot'] = e_tot
-    results[functional]['charges'] = charges
-    results[functional]['e_coulomb'] = e_coul
-    results[functional]['density_matrix'] = dm_dft
+    results[functional][etot_s] = e_tot
+    results[functional][charges_s] = charges
+    results[functional][e_coul_s] = e_coul
+    results[functional][dm_s] = dm_dft
     print('calculation of function %s done'%functional)
     print('coulomb energy', e_coul)
-    # print('dft-charges', *charges)
     print('sum of dft charges', np.sum(charges), '\n')
     sys.stdout.flush()
 
@@ -104,10 +120,10 @@ print('sum of hf charges', np.sum(charges_hf), '\n\n')
 sys.stdout.flush()
 
 results['hf'] = dict()
-results['hf']['charges'] = charges_hf
-results['hf']['e_tot'] = e_hf
-results['hf']['e_coulomb'] = e_coul
-results['hf']['density_matrix'] = dm_hf
+results['hf'][charges_s] = charges_hf
+results['hf'][etot_s] = e_hf
+results['hf'][e_coul_s] = e_coul
+results['hf'][dm_s] = dm_hf
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
@@ -125,40 +141,44 @@ sys.stdout.flush()
 charges_cc = Partitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
 _, e_coul = mf.energy_elec(dm_cc)
 print('coulomb energy', e_coul)
-# print('cc - charges', *charges_cc)
 print('sum of cc charges', np.sum(charges_cc), '\n\n')
 sys.stdout.flush()
 
 results['cc'] = dict()
-results['cc']['charges'] = charges_cc
-results['cc']['e_tot'] = e_cc
-results['cc']['e_coulomb'] = e_coul
-results['cc']['density_matrix'] = dm_cc
-results['cc']['ediff'] = 0.0
-results['cc']['charge_ediff'] = 0.0
+results['cc'][charges_s] = charges_cc
+results['cc'][etot_s] = e_cc
+results['cc'][e_coul_s] = e_coul
+results['cc'][dm_s] = dm_cc
+results['cc'][coul_diff] = 0.0
+results['cc'][charge_diff_energy] = 0.0
+results['cc'][abs_charge_diff_int] = 0.0
+results['cc'][squared_charge_diff_int] = 0.0
 rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
 
 _, ediff = mf.energy_elec(dm_hf - dm_cc)
-results['hf']['charge_ediff'] = ediff
-results['hf']['ediff'] = results['hf']['e_coulomb'] - results['cc']['e_coulomb']
-print('hf ediff', ediff, results['hf']['ediff'])
-rho, grid = Partitioning.getRho(mol, results['hf']['density_matrix'], gridLevel)
-print('hf norm', np.sum(np.abs( rho - rho_cc ) * grid.weights), np.sum((rho - rho_cc)**2 * grid.weights))
+results['hf'][charge_diff_energy] = ediff
+results['hf'][coul_diff] = results['hf'][e_coul_s] - results['cc'][e_coul_s]
+print('hf ediff', ediff, results['hf'][coul_diff])
+rho, grid = Partitioning.getRho(mol, results['hf'][dm_s], gridLevel)
+results['hf'][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc ) * grid.weights)
+results['hf'][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
+print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int])
 
 for functional in functionals:
     dft_res = mol.RHF()
-    # print('%s ecoul'%functional, dft_res.energy_elec(results[functional]['density_matrix']))
-    results[functional]['ediff'] = results[functional]['e_coulomb'] - results['cc']['e_coulomb']
-    _, temp = dft_res.energy_elec(results[functional]['density_matrix'] - results['cc']['density_matrix'])
-    results[functional]['charge_ediff'] = temp
-    print('%s ecdiff, e_edif'%functional, results[functional]['charge_ediff'], results[functional]['ediff'])
-    rho, grid = Partitioning.getRho(mol, results[functional]['density_matrix'], gridLevel)
-    print('%s norm'%functional, np.sum(np.abs( rho - rho_cc )* grid.weights), np.sum((rho - rho_cc)**2 * grid.weights))
+    results[functional][coul_diff] = results[functional][e_coul_s] - results['cc'][e_coul_s]
+    _, temp = dft_res.energy_elec(results[functional][dm_s] - results['cc'][dm_s])
+    results[functional][charge_diff_energy] = temp
+    print('%s ecdiff, e_edif'%functional, results[functional][charge_diff_energy], results[functional][coul_diff])
+    rho, grid = Partitioning.getRho(mol, results[functional][dm_s], gridLevel)
+    results[functional][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc )* grid.weights)
+    results[functional][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
+    print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int])
 
 
 summary = dict()
 summary['settings'] = settings
 summary['results'] = results
 print('\n')
-with open("result.json", "w") as f:
+with open(results_fname, "w") as f:
     json.dump(summary, f, indent=4, sort_keys=True, cls = NumpyArrayEncoder)
