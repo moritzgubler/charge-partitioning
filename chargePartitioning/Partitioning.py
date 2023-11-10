@@ -79,4 +79,4 @@ def getRho(molecule: pyscf.gto.Mole, densitymatrix, gridLevel = 5):
         rho = rhoA + rhoB
     else:
         rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
-    return rho
+    return rho, grid

@@ -100,7 +100,6 @@ if not restricted:
 charges_hf = Partitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
 _, e_coul = mf.energy_elec(dm_hf)
 print('coulomb energy', e_coul)
-# print('hf-charges', *charges_hf)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 sys.stdout.flush()
 
@@ -109,9 +108,6 @@ results['hf']['charges'] = charges_hf
 results['hf']['e_tot'] = e_hf
 results['hf']['e_coulomb'] = e_coul
 results['hf']['density_matrix'] = dm_hf
-# e_dcdft = dc_dft.get_dc_energy(mol, mf, isRestricted=True, gridLevel=gridLevel)
-# print('e_dcdft', e_dcdft)
-# sys.stdout.flush()
 
 # Coupled Cluster calculation
 print("Start coupled cluster calculation")
@@ -140,21 +136,25 @@ results['cc']['e_coulomb'] = e_coul
 results['cc']['density_matrix'] = dm_cc
 results['cc']['ediff'] = 0.0
 results['cc']['charge_ediff'] = 0.0
-
+rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
 
 _, ediff = mf.energy_elec(dm_hf - dm_cc)
 results['hf']['charge_ediff'] = ediff
 results['hf']['ediff'] = results['hf']['e_coulomb'] - results['cc']['e_coulomb']
 print('hf ediff', ediff, results['hf']['ediff'])
+rho, grid = Partitioning.getRho(mol, results['hf']['density_matrix'], gridLevel)
+print('hf norm', np.sum(np.abs( rho - rho_cc ) * grid.weights), np.sum((rho - rho_cc)**2 * grid.weights))
 
 for functional in functionals:
     dft_res = mol.RHF()
     # print('%s ecoul'%functional, dft_res.energy_elec(results[functional]['density_matrix']))
     results[functional]['ediff'] = results[functional]['e_coulomb'] - results['cc']['e_coulomb']
     _, temp = dft_res.energy_elec(results[functional]['density_matrix'] - results['cc']['density_matrix'])
-    print('adding result')
     results[functional]['charge_ediff'] = temp
-    print('%s ecdiff'%functional, results[functional]['charge_ediff'], results[functional]['ediff'])
+    print('%s ecdiff, e_edif'%functional, results[functional]['charge_ediff'], results[functional]['ediff'])
+    rho, grid = Partitioning.getRho(mol, results[functional]['density_matrix'], gridLevel)
+    print('%s norm'%functional, np.sum(np.abs( rho - rho_cc )* grid.weights), np.sum((rho - rho_cc)**2 * grid.weights))
+
 
 summary = dict()
 summary['settings'] = settings
