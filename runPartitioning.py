@@ -13,6 +13,12 @@ import os
 from ase.io import read, write
 from ase.atoms import Atoms
 
+def getElectricEnergy(scf, mol, dm):
+    # get coulomb operator in matrix form
+    vj = scf.get_j(mol, dm)
+    e_coul = np.einsum('ij,ji->', vj, dm).real * .5
+    return e_coul
+
 class NumpyArrayEncoder(JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
@@ -22,7 +28,7 @@ class NumpyArrayEncoder(JSONEncoder):
 
 gridLevel = 5
 mode = 'hirshfeld'
-do_cc = False
+do_cc = True
 
 results_dir = 'results/'
 if not os.path.exists(results_dir):
@@ -71,6 +77,8 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
         dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
     dft_temp = mol.RHF()
     _, e_elec = dft_temp.energy_elec(dm_dft)
+    print(e_elec, getElectricEnergy(dft_res, mol, dm_dft), getElectricEnergy(dft_temp, mol, dm_dft))
+    e_elec = getElectricEnergy(dft_res, mol, dm_dft)
     charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
     sys.stdout.flush()
     return e_pot, charges, e_elec, dm_dft, dft_res.mo_occ, dft_res.mo_energy
@@ -85,6 +93,7 @@ settings['restricted'] = restricted
 settings['total_charge'] = mol.charge
 settings['spin'] = mol.spin
 settings['gridlevel'] = gridLevel
+settings['xyz'] = os.path.abspath(xyzFilename)
 
 
 etot_s = 'etot'
@@ -124,7 +133,8 @@ e_hf = mf.e_tot
 if not restricted:
     dm_hf = dm_hf[0, :, :] + dm_hf[1, :, :]
 charges_hf = Partitioning.getAtomicCharges(mol, dm_hf, mode, gridLevel)
-_, e_coul = mf.energy_elec(dm_hf)
+# _, e_coul = mf.energy_elec(dm_hf)
+e_coul = getElectricEnergy(mf, mol, dm_hf)
 print('coulomb energy', e_coul)
 print('sum of hf charges', np.sum(charges_hf), '\n\n')
 sys.stdout.flush()
@@ -152,7 +162,7 @@ if do_cc:
         dm_cc = dm_cc[0] + dm_cc[1]
     sys.stdout.flush()
     charges_cc = Partitioning.getAtomicCharges(mol, dm_cc, mode, gridLevel)
-    _, e_coul = mf.energy_elec(dm_cc)
+    e_coul = getElectricEnergy(mf, mol, dm_cc)
     print('coulomb energy', e_coul)
     print('sum of cc charges', np.sum(charges_cc), '\n\n')
     sys.stdout.flush()
@@ -167,7 +177,7 @@ if do_cc:
     results['cc'][abs_charge_diff_int] = 0.0
     results['cc'][squared_charge_diff_int] = 0.0
 
-    _, ediff = mf.energy_elec(dm_hf - dm_cc)
+    ediff = getElectricEnergy(mf, mol, dm_hf - dm_cc)
 
     rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
 
@@ -177,18 +187,18 @@ if do_cc:
     rho, grid = Partitioning.getRho(mol, results['hf'][dm_s], gridLevel)
     results['hf'][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc ) * grid.weights)
     results['hf'][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-    print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int])
+    print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int], '\n')
 
     for functional in functionals:
         dft_res = mol.RHF()
         results[functional][coul_diff] = results[functional][e_coul_s] - results['cc'][e_coul_s]
-        _, temp = dft_res.energy_elec(results[functional][dm_s] - results[functional][dm_s])
+        temp = getElectricEnergy(dft_res, mol, results[functional][dm_s] - results['cc'][dm_s])
         results[functional][charge_diff_energy] = temp
         print('%s ecdiff, e_edif'%functional, results[functional][charge_diff_energy], results[functional][coul_diff])
         rho, grid = Partitioning.getRho(mol, results[functional][dm_s], gridLevel)
         results[functional][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc )* grid.weights)
         results[functional][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-        print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int])
+        print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int], '\n')
 
 
 summary = dict()
