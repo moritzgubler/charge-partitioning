@@ -25,7 +25,7 @@ dist = float(sys.argv[4])
 mol = pyscf.gto.Mole()
 mol.unit = 'B'
 mol.atom = [[element1, [0, 0, -dist / 2]], [element2, [0, 0, dist / 2]]]
-mol.basis = 'ccpvtz'
+mol.basis = 'ccpvdz'
 mol.symmetry = False
 mol.charge = totalCharge
 mol.build()
@@ -41,15 +41,20 @@ z = grid.copy()
 X, Z = np.meshgrid(x, z)
 
 meshgrid_grid = np.zeros((N * Nx, 3))
+mesh_coords = np.zeros((Nx, N, 2))
+
 ii = 0
+dx = (6) /(Nx + 1)
+dz = (2 * dist) / (N + 1)
 for i in range(Nx):
     for j in range(N):
-        meshgrid_grid[ii, :] = np.array([X[j, i], 0, Z[j, i]])
+        mesh_coords[i, j, :] = [i * dx, j * dz - dist]
+        meshgrid_grid[ii, :] = [i*dx, j*dz - dist, 0]
         ii += 1
-
 
 dm_dict = dict()
 rho_dict = dict()
+rho_mesh_dict_flat = dict()
 rho_mesh_dict = dict()
 
 functionals = ['lda', 'pbe', 'scan', 'b3lyp']
@@ -69,7 +74,8 @@ functionals.append('hf')
 functionals.append('cc')
 for fun in functionals:
     rho_dict[fun] = get_rho(mol, dm_dict[fun], grid)
-    rho_mesh_dict[fun] = get_rho(mol, dm_dict[fun], meshgrid_grid)
+    rho_mesh_dict_flat[fun] = get_rho(mol, dm_dict[fun], meshgrid_grid)
+    rho_mesh_dict[fun] = np.reshape(rho_mesh_dict_flat[fun], (Nx, N))
 
 for fun in functionals:
     plt.plot(grid[:, 2], rho_dict[fun], label = fun)
@@ -81,4 +87,10 @@ for fun in functionals:
 plt.title('Difference to cc')
 plt.legend()
 plt.show()
+
+for fun in functionals:
+    plt.contourf(np.linspace(0, 6, Nx), np.linspace(-dist, dist, N), rho_mesh_dict[fun])
+    plt.title(fun)
+    plt.colorbar()
+    plt.show()
 
