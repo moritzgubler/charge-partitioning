@@ -5,6 +5,7 @@ import numpy as np
 import chargePartitioning.Partitioning as Partitioning
 #import matplotlib.pyplot as plt
 from pyscf import dft
+from pyscf import cc
 import chargePartitioning.electronCounter as electronCounter
 # import dc_dft
 import json
@@ -52,12 +53,12 @@ mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
 mol.basis = sys.argv[3]
 mol.symmetry = False
-mol.charge = totalCharge
+mol.charge = int(totalCharge)
 temp_ats = read(xyzFilename)
 n_elec, core_elec, val_elec = electronCounter.countElectrons_symb(temp_ats.get_chemical_symbols())
 core_elec = 0
 
-mol.spin = (n_elec - totalCharge) % 2
+mol.spin = int((n_elec - totalCharge) % 2)
 print(mol.charge, mol.spin)
 mol.build()
 
@@ -72,12 +73,8 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
     dft_res.kernel()
     e_pot = dft_res.e_tot
     dm_dft = dft_res.make_rdm1(ao_repr=True)
-    # _, e_elec = dft_res.energy_elec(dm_dft)
     if not restricted:
         dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
-    dft_temp = mol.RHF()
-    _, e_elec = dft_temp.energy_elec(dm_dft)
-    print(e_elec, getElectricEnergy(dft_res, mol, dm_dft), getElectricEnergy(dft_temp, mol, dm_dft))
     e_elec = getElectricEnergy(dft_res, mol, dm_dft)
     charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
     sys.stdout.flush()
@@ -146,7 +143,7 @@ results['hf'][dm_s] = dm_hf
 if do_cc:
     # Coupled Cluster calculation
     print("Start coupled cluster calculation")
-    mycc = mf.CCSD(frozen=core_elec)
+    mycc = cc.CCSD(mf, frozen=core_elec)
     # mycc.async_io = False
     mycc.direct = True
     mycc.incore_complete = True
