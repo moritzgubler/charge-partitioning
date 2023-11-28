@@ -19,13 +19,44 @@ def main():
         with open(file.name, mode='r') as f:
             dict_list.append(json.load(f))
     
-    atom_list = []
-    for dictionary in dict_list:
-        atom_list.append(read(dictionary['settings']['xyz']))
+    # atom_list = []
+    # for dictionary in dict_list:
+    #     atom_list.append(read(dictionary['settings']['xyz']))
     
     functionals = list(dict_list[0]['results'].keys())
     # get charges
     charges = get_key_result(dict_list, 'charges')
+    rho_diff_energy = get_key_result(dict_list, 'charge_diff_energy')
+    print('\ncharge diff energy')
+    for fun in functionals:
+        print(fun, np.mean(rho_diff_energy[fun]))
+
+
+    print('\nno filter')
+    sqdiff = get_key_result(dict_list, 'squared_charge_diff_int')
+    for fun in functionals:
+        print(fun, np.mean(sqdiff[fun]))
+
+    charge_diff = dict()
+    for fun in functionals:
+        charge_diff[fun] = np.hstack(charges[fun]) - np.hstack(charges['cc'])
+
+    print('\nrmse e rho diff')
+    n_charges = len(charge_diff['cc'])
+    for fun in functionals:
+        print(fun, 1/n_charges * np.linalg.norm(charge_diff[fun]))
+    
+    print('\nmaxdiff')
+    for fun in functionals:
+        print(fun, np.max(np.abs(charge_diff[fun])))
+
+    coul_diff = get_key_result(dict_list, 'e_coulomb_diff')
+    print('\n rmse of coulomb energy')
+    for fun in functionals:
+        print(fun, np.linalg.norm(coul_diff[fun]) / len(coul_diff['cc']))
+    print('\nmaximal difference of coulomb energy')
+    for fun in functionals:
+        print(fun, np.max(np.abs(coul_diff[fun])))
     
 
 def get_key_result(dict_list, key):
