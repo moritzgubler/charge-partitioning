@@ -85,8 +85,8 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
 
 results = dict()
 settings = dict()
-# functionals = ['lda', 'pbe', 'pbe0', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
-functionals = ['scan']
+functionals = ['lda', 'pbe', 'pbe0', 'rpbe', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
+# functionals = ['scan']
 
 settings['basisset'] = mol.basis
 settings['restricted'] = restricted
