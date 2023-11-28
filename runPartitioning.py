@@ -76,7 +76,7 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
     if not restricted:
         dm_dft = dm_dft[0, :, :] + dm_dft[1, :, :]
     e_elec = getElectricEnergy(dft_res, mol, dm_dft)
-    charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
+    charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel, fastMethod = False)
     sys.stdout.flush()
     return e_pot, charges, e_elec, dm_dft
 
