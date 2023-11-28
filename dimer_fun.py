@@ -25,36 +25,30 @@ dist = float(sys.argv[4])
 mol = pyscf.gto.Mole()
 mol.unit = 'B'
 mol.atom = [[element1, [0, 0, -dist / 2]], [element2, [0, 0, dist / 2]]]
-mol.basis = 'ccpvdz'
+mol.basis = 'ccpvqz'
 mol.symmetry = False
 mol.charge = totalCharge
 mol.build()
 nat = len(mol._atom)
 
-N = 801
+N = 401
 grid = np.zeros((N, 3))
 grid[:, 2] = np.linspace(-dist, dist, N)
 
-Nx = 801
-x = np.linspace(0, 6, Nx)
-z = grid.copy()
-X, Z = np.meshgrid(x, z)
+Nx = 401
+xmax = 2.0
+x = np.linspace(0, xmax, Nx)
+z = np.linspace(-dist, dist, N)
+X, Y, Z = np.meshgrid(x, [0], z)
 
-meshgrid_grid = np.zeros((N * Nx, 3))
-mesh_coords = np.zeros((Nx, N, 2))
 
-ii = 0
-dx = (6) /(Nx + 1)
-dz = (2 * dist) / (N + 1)
-for i in range(Nx):
-    for j in range(N):
-        mesh_coords[i, j, :] = [i * dx, j * dz - dist]
-        meshgrid_grid[ii, :] = [i*dx, j*dz - dist, 0]
-        ii += 1
+meshgrid_grid = np.array([X, Y, Z])
+meshgrid_grid = meshgrid_grid.reshape((3, Nx* N)).T
 
 dm_dict = dict()
 rho_dict = dict()
 rho_mesh_dict_flat = dict()
+rho_mesh_dict_dv = dict()
 rho_mesh_dict = dict()
 
 functionals = ['lda', 'pbe', 'scan', 'b3lyp']
@@ -75,7 +69,9 @@ functionals.append('cc')
 for fun in functionals:
     rho_dict[fun] = get_rho(mol, dm_dict[fun], grid)
     rho_mesh_dict_flat[fun] = get_rho(mol, dm_dict[fun], meshgrid_grid)
-    rho_mesh_dict[fun] = np.reshape(rho_mesh_dict_flat[fun], (Nx, N))
+    rho_mesh_dict_dv[fun] = rho_mesh_dict_flat[fun] * meshgrid_grid[:, 0] * 2 * np.pi
+    rho_mesh_dict_dv[fun] = np.reshape(rho_mesh_dict_dv[fun], (Nx, N))
+    rho_mesh_dict[fun] = np.reshape( rho_mesh_dict_flat[fun], (Nx, N))
 
 for fun in functionals:
     plt.plot(grid[:, 2], rho_dict[fun], label = fun)
@@ -89,8 +85,15 @@ plt.legend()
 plt.show()
 
 for fun in functionals:
-    plt.contourf(np.linspace(0, 6, Nx), np.linspace(-dist, dist, N), rho_mesh_dict[fun])
+    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,np.abs(rho_mesh_dict[fun] - rho_mesh_dict['cc']))
     plt.title(fun)
     plt.colorbar()
     plt.show()
 
+
+
+for fun in functionals:
+    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,np.abs(rho_mesh_dict_dv[fun] - rho_mesh_dict_dv['cc']))
+    plt.title(fun + ' radially integrated')
+    plt.colorbar()
+    plt.show()
