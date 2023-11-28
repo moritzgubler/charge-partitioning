@@ -81,7 +81,7 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
     e_elec = getElectricEnergy(dft_res, mol, dm_dft)
     charges = Partitioning.getAtomicCharges(mol, dm_dft, mode, gridLevel)
     sys.stdout.flush()
-    return e_pot, charges, e_elec, dm_dft, dft_res.mo_occ, dft_res.mo_energy
+    return e_pot, charges, e_elec, dm_dft
 
 results = dict()
 settings = dict()
@@ -110,13 +110,11 @@ orb_energies_s = 'orb_energies'
 for functional in functionals:
     print("Start %s calculation"%functional)
     results[functional] = dict()
-    e_tot, charges, e_coul, dm_dft, orb_occ, orb_en = DFT_charges(mol, functional, restricted, gridLevel)
+    e_tot, charges, e_coul, dm_dft = DFT_charges(mol, functional, restricted, gridLevel)
     results[functional][etot_s] = e_tot
     results[functional][charges_s] = charges
     results[functional][e_coul_s] = e_coul
     results[functional][dm_s] = dm_dft
-    results[functional][occ_s] = orb_occ
-    results[functional][orb_energies_s] = orb_en
     print('calculation of function %s done'%functional)
     print('coulomb energy', e_coul)
     print('sum of dft charges', np.sum(charges), '\n')
@@ -144,8 +142,6 @@ results['hf'][charges_s] = charges_hf
 results['hf'][etot_s] = e_hf
 results['hf'][e_coul_s] = e_coul
 results['hf'][dm_s] = dm_hf
-results['hf'][occ_s] = mf.mo_occ
-results['hf'][orb_energies_s] = mf.mo_energy
 
 if do_cc:
     # Coupled Cluster calculation
