@@ -76,24 +76,37 @@ for fun in functionals:
 for fun in functionals:
     plt.plot(grid[:, 2], rho_dict[fun], label = fun)
 plt.legend()
-plt.show()
-functionals.remove('cc')
+plt.savefig('rholine.pdf')
+# plt.show()
+# functionals.remove('cc')
 for fun in functionals:
     plt.plot(grid[:, 2], rho_dict[fun] - rho_dict['cc'], label = fun)
 plt.title('Difference to cc')
 plt.legend()
-plt.show()
-
+plt.savefig('rholine_error.pdf')
+# plt.show()
+levels = 40
+prename = '%s_%s_%s_'%(sys.argv[2], sys.argv[3], mol.basis)
 for fun in functionals:
-    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,np.abs(rho_mesh_dict[fun] - rho_mesh_dict['cc']))
+    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,(rho_mesh_dict[fun] - rho_mesh_dict['cc']), levels = 40, vmin = -.03, vmax = .03, cmap='bwr')
     plt.title(fun)
     plt.colorbar()
+    plt.savefig('%srhodiff_%s.pdf'%(prename, fun))
     plt.show()
 
+for fun in functionals:
+    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,(rho_mesh_dict_dv[fun] - rho_mesh_dict_dv['cc']), levels = 40, vmin = -.03, vmax = .03, cmap='bwr')
+    plt.title(prename + fun + ' radially integrated')
+    plt.colorbar()
+    plt.savefig('%sradial_%s.pdf'%(prename, fun))
+    plt.show()
+
+    eps = 1e-4
 
 
 for fun in functionals:
-    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) ,np.abs(rho_mesh_dict_dv[fun] - rho_mesh_dict_dv['cc']))
-    plt.title(fun + ' radially integrated')
+    plt.contourf(np.linspace(-dist, dist, N), np.linspace(0, xmax, Nx) , rho_mesh_dict['cc'] * (rho_mesh_dict_dv[fun] - rho_mesh_dict_dv['cc']) / (rho_mesh_dict_dv['cc']**2 + eps**2), levels = 40, vmin = -.2, vmax = .2, cmap = 'bwr')
+    plt.title(prename + fun + ' radially integrated relative error')
     plt.colorbar()
+    plt.savefig('relative%sradial_%s.pdf'%(prename, fun))
     plt.show()
