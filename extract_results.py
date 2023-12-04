@@ -32,7 +32,7 @@ def main():
         print(fun, np.mean(rho_diff_energy[fun]))
 
 
-    print('\nno filter')
+    print('\n integral over squared charge difference')
     sqdiff = get_key_result(dict_list, 'squared_charge_diff_int')
     for fun in functionals:
         print(fun, np.mean(sqdiff[fun]))
@@ -41,12 +41,12 @@ def main():
     for fun in functionals:
         charge_diff[fun] = np.hstack(charges[fun]) - np.hstack(charges['cc'])
 
-    print('\nrmse e rho diff')
+    print('\nrmse e rho diff (hirshfeld charges)')
     n_charges = len(charge_diff['cc'])
     for fun in functionals:
         print(fun, 1/n_charges * np.linalg.norm(charge_diff[fun]))
     
-    print('\nmaxdiff')
+    print('\nmaxdiff of hirshfeld charges')
     for fun in functionals:
         print(fun, np.max(np.abs(charge_diff[fun])))
 
@@ -57,6 +57,16 @@ def main():
     print('\nmaximal difference of coulomb energy')
     for fun in functionals:
         print(fun, np.max(np.abs(coul_diff[fun])))
+
+    dip_diff = get_key_result(dict_list, 'dipole_diff')
+    quad_diff = get_key_result(dict_list, 'quadrupole_diff')
+
+    print("average dipole error:")
+    for fun in functionals:
+        print(fun, np.mean(dip_diff[fun]))
+    print("average quadrupole error:")
+    for fun in functionals:
+        print(fun, np.mean(quad_diff[fun]))
     
 
 def get_key_result(dict_list, key):

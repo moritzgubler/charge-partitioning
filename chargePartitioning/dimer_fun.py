@@ -29,7 +29,7 @@ def dimer_calculation(element1, element2, totalCharge, dist, functionals, basis 
     nat = len(mol._atom)
 
     grid = np.zeros((Nz, 3))
-    grid[:, 2] = np.linspace(-dist, dist, Nz)
+    grid[:, 2] = np.linspace(-dist + 1, dist + 1, Nz)
 
     x = np.linspace(0, xmax, Nx)
     z = np.linspace(-dist, dist, Nz)
