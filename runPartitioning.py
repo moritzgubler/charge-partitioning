@@ -13,6 +13,7 @@ from json import JSONEncoder
 import os
 from ase.io import read, write
 from ase.atoms import Atoms
+import chargePartitioning.dc_dft as dc_dft
 
 def getElectricEnergy(scf, mol, dm):
     # get coulomb operator in matrix form
@@ -26,6 +27,15 @@ class NumpyArrayEncoder(JSONEncoder):
             return obj.tolist()
         return JSONEncoder.default(self, obj)
 
+def dipole_and_quadrupole(rho, grid, weights):
+    dipole = np.empty(3)
+    for i in range(3):
+        dipole[i] = np.sum(rho * weights * grid[:, i], axis = 0)
+    quadrupole = 3 * np.einsum('i, i, ij, ik -> jk', rho, weights, grid, grid)
+    quad_diag = np.sum(rho * weights * np.sum(grid * grid, axis = 1))
+    for i in range(3):
+        quadrupole[i, i] = quadrupole[i, i] - quad_diag
+    return dipole, quadrupole
 
 gridLevel = 5
 mode = 'hirshfeld'
@@ -82,8 +92,8 @@ def DFT_charges(mol, functional, restricted: bool, gridLevel = 5, mode = 'hirshf
 
 results = dict()
 settings = dict()
-functionals = ['lda', 'pbe', 'pbe0', 'rpbe', 'scan', 'rscan', 'r2scan', 'blyp', 'b3lyp']
-# functionals = ['scan']
+# functionals = ['lda', 'pbe', 'pbe0', 'rpbe', 'scan', 'rscan', 'r2scan', 'SCAN0,SCAN' 'blyp', 'b3lyp']
+functionals = ['scan']
 
 settings['basisset'] = mol.basis
 settings['restricted'] = restricted
@@ -139,6 +149,8 @@ results['hf'][charges_s] = charges_hf
 results['hf'][etot_s] = e_hf
 results['hf'][e_coul_s] = e_coul
 results['hf'][dm_s] = dm_hf
+e_dc_dft = dc_dft.get_dc_energy(mol, mf, False)
+results['hf']['df_dft'] = e_dc_dft
 
 if do_cc:
     # Coupled Cluster calculation
@@ -148,7 +160,8 @@ if do_cc:
     mycc.direct = True
     mycc.incore_complete = True
     mycc.run()
-    e_cc = mycc.e_tot
+    e_cc = mycc.e_tot + mycc.ccsd_t()
+    print(e_cc, e_dc_dft)
 
     dm_cc = mycc.make_rdm1(ao_repr=True)
     if not restricted:
@@ -165,22 +178,13 @@ if do_cc:
     results['cc'][etot_s] = e_cc
     results['cc'][e_coul_s] = e_coul
     results['cc'][dm_s] = dm_cc
-    results['cc'][coul_diff] = 0.0
-    results['cc'][charge_diff_energy] = 0.0
-    results['cc'][abs_charge_diff_int] = 0.0
-    results['cc'][squared_charge_diff_int] = 0.0
 
     ediff = getElectricEnergy(mf, mol, dm_hf - dm_cc)
 
     rho_cc, grid = Partitioning.getRho(mol, dm_cc, gridLevel)
 
-    results['hf'][charge_diff_energy] = ediff
-    results['hf'][coul_diff] = results['hf'][e_coul_s] - results['cc'][e_coul_s]
-    print('hf ecdiff, ediff', ediff, results['hf'][coul_diff])
-    rho, grid = Partitioning.getRho(mol, results['hf'][dm_s], gridLevel)
-    results['hf'][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc ) * grid.weights)
-    results['hf'][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-    print('hf norm abs, norm square', results['hf'][abs_charge_diff_int], results['hf'][squared_charge_diff_int], '\n')
+    functionals.append('hf')
+    functionals.insert(0, 'cc')
 
     for functional in functionals:
         dft_res = mol.RHF()
@@ -191,7 +195,14 @@ if do_cc:
         rho, grid = Partitioning.getRho(mol, results[functional][dm_s], gridLevel)
         results[functional][abs_charge_diff_int] = np.sum(np.abs( rho - rho_cc )* grid.weights)
         results[functional][squared_charge_diff_int] = np.sum((rho - rho_cc)**2 * grid.weights)
-        print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int], '\n')
+        print('%s norm abs, norm square'%functional, results[functional][abs_charge_diff_int], results[functional][squared_charge_diff_int])
+        dipole, quadrupole = dipole_and_quadrupole(rho, grid.coords, grid.weights)
+        results[functional]['dipole'] = dipole
+        results[functional]['dipole_diff'] = np.linalg.norm(dipole - results['cc']['dipole'])
+        results[functional]['quadrupole'] = quadrupole
+        results[functional]['quadrupole_diff'] = np.linalg.norm(quadrupole - results['cc']['quadrupole'])
+        print("%s dipole moment"%functional, dipole)
+        print("quadrupole", quadrupole, '\n')
 
 
 summary = dict()
