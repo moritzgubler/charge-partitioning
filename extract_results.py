@@ -61,10 +61,10 @@ def main():
     dip_diff = get_key_result(dict_list, 'dipole_diff')
     quad_diff = get_key_result(dict_list, 'quadrupole_diff')
 
-    print("average dipole error:")
+    print("\naverage dipole error:")
     for fun in functionals:
         print(fun, np.mean(dip_diff[fun]))
-    print("average quadrupole error:")
+    print("\naverage quadrupole error:")
     for fun in functionals:
         print(fun, np.mean(quad_diff[fun]))
     
@@ -72,7 +72,7 @@ def main():
 def get_key_result(dict_list, key):
     results = dict()
     functionals = list(dict_list[0]['results'].keys())
-    print(functionals)
+    # print(functionals)
     for functional in functionals:
         results[functional] = []
     for dictionary in dict_list:
