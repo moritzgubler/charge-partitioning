@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import sys
 import pyscf
@@ -56,15 +55,15 @@ if len(sys.argv) != 2:
     print("""Provide one argument, the basiss""")
     quit()
 basis = sys.argv[1]
-totalCharge = 1
-name = 'Na'
+totalCharge = -1
+name = 'F'
 
 results_fname = "%s_%s.json"%(name, basis)
 print("results", results_fname)
 
 mol = pyscf.gto.Mole()
 # mol.basis = 'sto-3g'
-mol.atom = "Na 0.0 0.0 0.0"
+mol.atom = name + "0.0 0.0 0.0"
 mol.basis = sys.argv[1]
 mol.symmetry = False
 mol.charge = totalCharge
@@ -118,10 +117,10 @@ for functional in functionals:
     print("Start %s calculation"%functional)
     results[functional] = dict()
     e_tot, e_coul, dm_dft = DFT_charges(mol, functional, restricted, gridLevel)
-    ao = mol.eval_gto(eval_name='GTOval', coords=grid.coords)
+    ao = mol.eval_gto(eval_name='GTOval', coords=grid)
     rho = np.einsum('pi,ij,pj->p', ao, dm_dft, ao)
-    results[functional][rho] = rho
-    results[functional][grid] = rgrid
+    results[functional]['rho'] = rho
+    results[functional]['grid'] = rgrid
     results[functional][etot_s] = e_tot
     results[functional][e_coul_s] = e_coul
     results[functional][dm_s] = dm_dft
@@ -144,12 +143,17 @@ e_coul = getElectricEnergy(mf, mol, dm_hf)
 print('coulomb energy', e_coul)
 sys.stdout.flush()
 
+ao = mol.eval_gto(eval_name='GTOval', coords=grid)
+rho = np.einsum('pi,ij,pj->p', ao, dm_hf, ao)
+
 results['hf'] = dict()
 results['hf'][etot_s] = e_hf
 results['hf'][e_coul_s] = e_coul
 results['hf'][dm_s] = dm_hf
 e_dc_dft = dc_dft.get_dc_energy(mol, mf, False)
 results['hf']['df_dft'] = e_dc_dft
+results['hf']['rho'] = rho
+results['hf']['grid'] = rgrid
 
 if do_cc:
     # Coupled Cluster calculation
@@ -170,7 +174,13 @@ if do_cc:
     print('coulomb energy', e_coul)
     sys.stdout.flush()
 
+    ao = mol.eval_gto(eval_name='GTOval', coords=grid)
+    rho = np.einsum('pi,ij,pj->p', ao, dm_cc, ao)
+
+
     results['cc'] = dict()
+    results['cc']['rho'] = rho
+    results['cc']['grid'] = rgrid
     results['cc'][etot_s] = e_cc
     results['cc'][e_coul_s] = e_coul
     results['cc'][dm_s] = dm_cc
@@ -182,9 +192,15 @@ if do_cc:
     functionals.append('hf')
     functionals.insert(0, 'cc')
 
-    f = open('charges.dat', 'w')
+    f = open('charges_' + name + '.dat', 'w')
     f.write("# " + str(functionals) + '\n')
-    
+    for i in range(len(rgrid)):
+        s = str(rgrid[i]) + " "
+        for functional in functionals:
+            s += str(results[functional]['rho'][i]) + " "
+        f.write(s + '\n')
+    f.close() 
+
     for functional in functionals:
         dft_res = mol.RHF()
         results[functional][coul_diff] = results[functional][e_coul_s] - results['cc'][e_coul_s]
