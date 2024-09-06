@@ -74,10 +74,10 @@ def main():
     for dictionary in dict_list:
         energies['dc_dft'].append(dictionary['results']['hf']['df_dft'])
 
-    # f_copy = functionals.copy()
-    # f_copy.remove('cc')
+    f_copy = functionals.copy()
+    f_copy.remove('cc')
     # f_copy.append('dc_dft')
-    f_copy = ['scan', 'SCAN0,SCAN', 'b3lyp']
+    # f_copy = ['scan', 'SCAN0,SCAN', 'b3lyp']
     for fun in f_copy:
         plt.scatter(energies['cc'], energies[fun], label = fun)
     plt.legend()
