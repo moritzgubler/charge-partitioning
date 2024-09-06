@@ -201,6 +201,8 @@ if do_cc:
         results[functional]['dipole_diff'] = np.linalg.norm(dipole - results['cc']['dipole'])
         results[functional]['quadrupole'] = quadrupole
         results[functional]['quadrupole_diff'] = np.linalg.norm(quadrupole - results['cc']['quadrupole'])
+        results[functional]['rhodiff'] = np.max(rho - rho_cc)
+        results[functional]['rhodiff_negative'] = np.max(rho_cc - rho)
         print("%s dipole moment"%functional, dipole)
         print("quadrupole", quadrupole, '\n')
 
