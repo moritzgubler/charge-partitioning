@@ -45,7 +45,7 @@ results_dir = 'results/'
 if not os.path.exists(results_dir):
    os.makedirs(results_dir)
 
-restricted = False
+restricted = True
 
 if len(sys.argv) != 4:
     print("""Provide three arguments, first is xyz filename of molecule, second is total charge of molecule, third is basiss""")
@@ -149,8 +149,8 @@ results['hf'][charges_s] = charges_hf
 results['hf'][etot_s] = e_hf
 results['hf'][e_coul_s] = e_coul
 results['hf'][dm_s] = dm_hf
-e_dc_dft = dc_dft.get_dc_energy(mol, mf, False)
-results['hf']['df_dft'] = e_dc_dft
+# e_dc_dft = dc_dft.get_dc_energy(mol, mf, False)
+# results['hf']['df_dft'] = e_dc_dft
 
 if do_cc:
     # Coupled Cluster calculation
@@ -161,7 +161,8 @@ if do_cc:
     mycc.incore_complete = True
     mycc.run()
     e_cc = mycc.e_tot + mycc.ccsd_t()
-    print(e_cc, e_dc_dft)
+    # print(e_cc, e_dc_dft)
+    print('ccsd(t) energy', e_cc)
 
     dm_cc = mycc.make_rdm1(ao_repr=True)
     if not restricted:
