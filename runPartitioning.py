@@ -83,7 +83,7 @@ basis = {
     'Ar': sys.argv[3],
 }
 
-mol.basis = sys.argv[3]
+mol.basis = basis
 mol.symmetry = False
 mol.charge = int(totalCharge)
 temp_ats = read(xyzFilename)
