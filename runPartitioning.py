@@ -61,6 +61,28 @@ print("results", results_fname)
 mol = pyscf.gto.Mole()
 mol.atom = xyzFilename
 # mol.basis = 'sto-3g'
+
+basis = {
+    'H': sys.argv[3],
+    'He': sys.argv[3],
+    'Li': 'augccpvqz',
+    'Be': 'augccpvqz',
+    'B': sys.argv[3],
+    'C': sys.argv[3],
+    'N': sys.argv[3],
+    'O': sys.argv[3],
+    'F': sys.argv[3],
+    'Ne': sys.argv[3],
+    'Na': 'augccpvqz',
+    'Mg': 'augccpvqz',
+    'Al': sys.argv[3],
+    'Si': sys.argv[3],
+    'P': sys.argv[3],
+    'S': sys.argv[3],
+    'Cl': sys.argv[3],
+    'Ar': sys.argv[3],
+}
+
 mol.basis = sys.argv[3]
 mol.symmetry = False
 mol.charge = int(totalCharge)
