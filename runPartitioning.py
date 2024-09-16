@@ -14,6 +14,7 @@ import os
 from ase.io import read, write
 from ase.atoms import Atoms
 import chargePartitioning.dc_dft as dc_dft
+from ase.units import Bohr
 
 def getElectricEnergy(scf, mol, dm):
     # get coulomb operator in matrix form
@@ -225,6 +226,18 @@ if do_cc:
         results[functional]['quadrupole'] = quadrupole
         results[functional]['quadrupole_diff'] = np.linalg.norm(quadrupole - results['cc']['quadrupole'])
         results[functional]['rhodiff'] = np.max(rho - rho_cc)
+        maxloc = np.argmax(np.abs(rho - rho_cc))
+        maxpos = grid.coords[maxloc, :]
+        print("maxloc", maxloc, "maxpos", maxpos, 'rho[maxloc]', rho[maxloc], 'rho_cc[maxloc]', rho_cc[maxloc])
+        mindist = 100000.0
+        pos = temp_ats.get_positions() * 1.8897259886
+        for i in range(len(temp_ats)):
+            dist = np.linalg.norm(maxpos - pos[i, :])
+            if dist < mindist:
+                mindist = dist
+        results[functional]['distrhodiff'] = mindist
+        results[functional]['maxrhodiffpos'] = maxpos
+
         results[functional]['rhodiff_negative'] = np.max(rho_cc - rho)
         print("%s dipole moment"%functional, dipole)
         print("quadrupole", quadrupole, '\n')
