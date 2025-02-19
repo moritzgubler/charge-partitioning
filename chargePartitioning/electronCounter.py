@@ -3,6 +3,9 @@ import chargePartitioning.periodictable as periodictable
 
 def countElectrons(mol: pyscf.gto.Mole):
     symbs, coords = zip(*mol._atom)
+    return countElectrons_symb(symbs)
+
+def countElectrons_symb(symbs: list):
     totalElectrons = 0
     totalCoreElectrons = 0
     totalValenceElectrons = 0

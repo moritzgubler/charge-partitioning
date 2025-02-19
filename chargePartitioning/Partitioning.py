@@ -17,8 +17,8 @@ def createGrid(molecule: pyscf.gto.Mole, gridLevel=4):
 
 def integrateDensityOfAtom(molecule: pyscf.gto.Mole, rho: np.array, atomIndex: int, grid: pyscf.dft.gen_grid.Grids, mode='hirshfeld'):
     if mode == 'hirshfeld':
-        functionDict = hirshfeldWeightFunction.createDensityInterpolationDictionary(molecule)
-        weights = hirshfeldWeightFunction.partitioningWeights(grid.coords, molecule, atomIndex, functionDict)
+        functionDict = hirshfeldWeightFunction.createDensityInterpolationDictionary(molecule.elements)
+        weights = hirshfeldWeightFunction.partitioningWeights_molecule(grid.coords, molecule, atomIndex, functionDict)
     elif mode == 'voronoi':
         weights = smoothVoronoiPartitioning.partitioningWeights(grid.coords, molecule, atomIndex)
     else:
@@ -58,7 +58,7 @@ def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld',
         atomSymb = molecule._atom[i][0]
         if fastMethod:
             grid = createGrid(atomList[i], gridLevel)
-            print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
+            # print('number of gridpoints used for charge partitioning', grid.coords.shape[0])
             ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
             if type(densitymatrix) is tuple or len(densitymatrix.shape) == 3:
                 rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
@@ -70,3 +70,13 @@ def getAtomicCharges(molecule: pyscf.gto.Mole, densitymatrix,  mode='hirshfeld',
         charges.append(-integrateDensityOfAtom(molecule, rho, i, grid, mode) + protonCount)
     return charges
 
+def getRho(molecule: pyscf.gto.Mole, densitymatrix, gridLevel = 5):
+    grid = createGrid(molecule, gridLevel=gridLevel)
+    ao = molecule.eval_gto(eval_name='GTOval', coords=grid.coords)
+    if type(densitymatrix) is tuple:
+        rhoA = np.einsum('pi,ij,pj->p', ao, densitymatrix[0], ao)
+        rhoB = np.einsum('pi,ij,pj->p', ao, densitymatrix[1], ao)
+        rho = rhoA + rhoB
+    else:
+        rho = np.einsum('pi,ij,pj->p', ao, densitymatrix, ao)
+    return rho, grid
