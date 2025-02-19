@@ -1,0 +1,2 @@
+A python library to analyze and compare DFT and CCSD charge densities using the PySCF framework. Hirshfeld charges can be computed for any method that PySCF implements with user defined reference charge densities.
+Please cite the paper [Accuracy of Charge Densities in Electronic Structure Calculations](https://arxiv.org/pdf/2410.17866) when this library is used in a scientific context.
