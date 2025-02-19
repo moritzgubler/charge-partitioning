@@ -58,8 +58,8 @@ if len(sys.argv) != 2:
 # basis = sys.argv[1]
 basisname = sys.argv[1]
 basis = basisname
-totalCharge = -1
-name = 'Br'
+totalCharge = 0
+name = 'Ne'
 
 results_fname = "%s_%s.json"%(name, basisname)
 print("results", results_fname)
@@ -211,7 +211,7 @@ if do_cc:
     functionals.append('hf')
     functionals.insert(0, 'cc')
 
-    f = open('charges_' + name + '.dat', 'w')
+    f = open('charges_' + results_fname + '.dat', 'w')
     f.write("# " + str(functionals) + '\n')
     for i in range(len(rgrid)):
         s = str(rgrid[i]) + " "
@@ -220,7 +220,7 @@ if do_cc:
         f.write(s + '\n')
     f.close()
 
-    f = open('charges_int_' + name + '.dat', 'w')
+    f = open('charges_int_' + results_fname + '.dat', 'w')
     f.write("# " + str(functionals) + '\n')
     for i in range(len(rgrid)):
         s = str(rgrid[i]) + " "
